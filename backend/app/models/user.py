@@ -1,0 +1,135 @@
+import enum
+from datetime import datetime, timezone
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.session import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    USER = "user"
+
+
+class RecommendMode(str, enum.Enum):
+    PRACTICE = "practice"  # tier -3 ~ -1
+    TRAIN = "train"  # tier -1 ~ +1
+    CHALLENGE = "challenge"  # tier +1 ~ +3
+
+
+class TagLogic(str, enum.Enum):
+    AND = "AND"
+    OR = "OR"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole), nullable=False, default=UserRole.USER
+    )
+
+    boj_handle: Mapped[str | None] = mapped_column(
+        String(100), unique=True, nullable=True
+    )
+    # solved.ac tier: 1 (Bronze V) ~ 30 (Ruby I), 0 = unrated
+    tier: Mapped[int] = mapped_column(Integer, default=0)
+    # admin이 수동으로 tier를 override했는지 여부
+    tier_override: Mapped[bool] = mapped_column(Boolean, default=False)
+    rating: Mapped[int] = mapped_column(Integer, default=0)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    tag_stats: Mapped[list["UserTagStat"]] = relationship(
+        "UserTagStat", back_populates="user", cascade="all, delete-orphan"
+    )
+    solved_problems: Mapped[list["SolvedProblem"]] = relationship(
+        "SolvedProblem", back_populates="user", cascade="all, delete-orphan"
+    )
+    recommendation_history: Mapped[list["RecommendationHistory"]] = relationship(
+        "RecommendationHistory", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserTagStat(Base):
+    __tablename__ = "user_tag_stats"
+    __table_args__ = (UniqueConstraint("user_id", "tag_key", name="uq_user_tag"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tag_key: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g. "dp"
+    tag_name_ko: Mapped[str] = mapped_column(
+        String(100), nullable=False
+    )  # e.g. "다이나믹 프로그래밍"
+    tag_name_en: Mapped[str] = mapped_column(String(100), nullable=False)
+    solved_count: Mapped[int] = mapped_column(Integer, default=0)
+    # solved.ac가 계산한 해당 태그에서의 유저 레벨 (0~30)
+    level: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="tag_stats")
+
+
+class SolvedProblem(Base):
+    __tablename__ = "solved_problems"
+    __table_args__ = (
+        UniqueConstraint("user_id", "problem_id", name="uq_user_problem"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    problem_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    solved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="solved_problems")
+
+
+class RecommendationHistory(Base):
+    __tablename__ = "recommendation_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    problem_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    tags: Mapped[list] = mapped_column(JSON, nullable=False)  # ["dp", "graph"]
+    mode: Mapped[RecommendMode] = mapped_column(Enum(RecommendMode), nullable=False)
+    tag_logic: Mapped[TagLogic] = mapped_column(Enum(TagLogic), nullable=False)
+    recommended_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="recommendation_history")
