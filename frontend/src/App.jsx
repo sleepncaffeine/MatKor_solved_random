@@ -5,9 +5,7 @@ import Register from './pages/Register'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Recommend from './pages/Recommend'
-
-// Admin 페이지는 다음 단계에서 구현
-const AdminUsers = () => <div className="p-8 text-text-primary font-mono">Admin Users — 구현 예정</div>
+import AdminUsers from './pages/AdminUsers'
 
 export default function App() {
   return (
