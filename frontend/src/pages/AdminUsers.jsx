@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Nav from '../components/layout/Nav'
 import useAuthStore from '../store/auth'
 import client from '../api/client'
 
 const TIER_LABELS = [
   'Unrated',
-  'Bronze V','Bronze IV','Bronze III','Bronze II','Bronze I',
-  'Silver V','Silver IV','Silver III','Silver II','Silver I',
-  'Gold V','Gold IV','Gold III','Gold II','Gold I',
-  'Platinum V','Platinum IV','Platinum III','Platinum II','Platinum I',
-  'Diamond V','Diamond IV','Diamond III','Diamond II','Diamond I',
-  'Ruby V','Ruby IV','Ruby III','Ruby II','Ruby I',
+  'Bronze V', 'Bronze IV', 'Bronze III', 'Bronze II', 'Bronze I',
+  'Silver V', 'Silver IV', 'Silver III', 'Silver II', 'Silver I',
+  'Gold V', 'Gold IV', 'Gold III', 'Gold II', 'Gold I',
+  'Platinum V', 'Platinum IV', 'Platinum III', 'Platinum II', 'Platinum I',
+  'Diamond V', 'Diamond IV', 'Diamond III', 'Diamond II', 'Diamond I',
+  'Ruby V', 'Ruby IV', 'Ruby III', 'Ruby II', 'Ruby I',
 ]
 
 const TIER_COLORS = [
   '#6b7280',
-  '#ad5600','#ad5600','#ad5600','#ad5600','#ad5600',
-  '#435f7a','#435f7a','#435f7a','#435f7a','#435f7a',
-  '#ec9a00','#ec9a00','#ec9a00','#ec9a00','#ec9a00',
-  '#27e2a4','#27e2a4','#27e2a4','#27e2a4','#27e2a4',
-  '#00b4fc','#00b4fc','#00b4fc','#00b4fc','#00b4fc',
-  '#ff0062','#ff0062','#ff0062','#ff0062','#ff0062',
+  '#ad5600', '#ad5600', '#ad5600', '#ad5600', '#ad5600',
+  '#435f7a', '#435f7a', '#435f7a', '#435f7a', '#435f7a',
+  '#ec9a00', '#ec9a00', '#ec9a00', '#ec9a00', '#ec9a00',
+  '#27e2a4', '#27e2a4', '#27e2a4', '#27e2a4', '#27e2a4',
+  '#00b4fc', '#00b4fc', '#00b4fc', '#00b4fc', '#00b4fc',
+  '#ff0062', '#ff0062', '#ff0062', '#ff0062', '#ff0062',
 ]
 
 // ---------- API helpers ----------
@@ -39,10 +40,10 @@ const adminApi = {
 function Badge({ children, color = 'default' }) {
   const styles = {
     default: 'bg-bg-raised border-bg-border text-text-secondary',
-    green:   'bg-green-950/30 border-green-800/40 text-accent-green',
-    red:     'bg-red-950/30 border-red-900/40 text-accent-red',
-    amber:   'bg-amber-950/30 border-amber-800/40 text-accent-amber',
-    blue:    'bg-blue-950/30 border-blue-800/40 text-accent-blue',
+    green: 'bg-green-950/30 border-green-800/40 text-accent-green',
+    red: 'bg-red-950/30 border-red-900/40 text-accent-red',
+    amber: 'bg-amber-950/30 border-amber-800/40 text-accent-amber',
+    blue: 'bg-blue-950/30 border-blue-800/40 text-accent-blue',
   }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono border ${styles[color]}`}>
@@ -94,8 +95,8 @@ function UserDetailModal({ user, onClose, onUpdated }) {
   const [msg, setMsg] = useState(null)
 
   useEffect(() => {
-    adminApi.getUserStats(user.id).then((r) => setStats(r.data)).catch(() => {})
-    adminApi.getUserHistory(user.id).then((r) => setHistory(r.data)).catch(() => {})
+    adminApi.getUserStats(user.id).then((r) => setStats(r.data)).catch(() => { })
+    adminApi.getUserHistory(user.id).then((r) => setHistory(r.data)).catch(() => { })
   }, [user.id])
 
   const flash = (text, type = 'ok') => {
@@ -161,11 +162,10 @@ function UserDetailModal({ user, onClose, onUpdated }) {
       </div>
 
       {msg && (
-        <div className={`mb-4 px-3 py-2 rounded-lg text-sm border ${
-          msg.type === 'ok'
+        <div className={`mb-4 px-3 py-2 rounded-lg text-sm border ${msg.type === 'ok'
             ? 'bg-green-950/30 border-green-800/40 text-accent-green'
             : 'bg-red-950/30 border-red-900/40 text-accent-red'
-        }`}>
+          }`}>
           {msg.text}
         </div>
       )}
@@ -371,38 +371,7 @@ export default function AdminUsers() {
       />
 
       {/* 헤더 */}
-      <header className="border-b border-bg-border bg-bg-surface/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-accent-blue font-semibold">BOJ</span>
-              <span className="text-bg-border">/</span>
-              <span className="font-mono text-text-secondary">rec</span>
-            </div>
-            <span className="text-bg-border">/</span>
-            <span className="font-mono text-accent-amber text-sm">admin</span>
-          </div>
-          <nav className="flex items-center gap-6">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="text-text-secondary hover:text-text-primary text-sm transition-colors"
-            >
-              대시보드
-            </button>
-            <span className="text-accent-amber text-sm border-b border-accent-amber pb-0.5">유저 관리</span>
-            <button
-              onClick={() => {
-                localStorage.removeItem('access_token')
-                localStorage.removeItem('refresh_token')
-                navigate('/login')
-              }}
-              className="text-text-muted hover:text-accent-red text-sm transition-colors"
-            >
-              로그아웃
-            </button>
-          </nav>
-        </div>
-      </header>
+      <Nav />
 
       <main className="max-w-6xl mx-auto px-6 py-10 animate-fade-in space-y-6">
         {/* 상단 */}
@@ -518,7 +487,7 @@ export default function AdminUsers() {
             fetchUsers()
             adminApi.getUser(selectedUser.id)
               .then((r) => setSelectedUser(r.data))
-              .catch(() => {})
+              .catch(() => { })
           }}
         />
       )}

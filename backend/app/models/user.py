@@ -57,6 +57,9 @@ class User(Base):
     tier_override: Mapped[bool] = mapped_column(Boolean, default=False)
     rating: Mapped[int] = mapped_column(Integer, default=0)
 
+    defense_mode: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="train"
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
@@ -73,6 +76,9 @@ class User(Base):
     )
     recommendation_history: Mapped[list["RecommendationHistory"]] = relationship(
         "RecommendationHistory", back_populates="user", cascade="all, delete-orphan"
+    )
+    defense_assignments: Mapped[list["DefenseAssignment"]] = relationship(
+        "DefenseAssignment", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -133,3 +139,87 @@ class RecommendationHistory(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="recommendation_history")
+
+
+class Defense(Base):
+    __tablename__ = "defenses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    tags: Mapped[list] = mapped_column(JSON, nullable=False)  # ["dp", "graph"]
+    problem_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    fixed_problem_ids: Mapped[list] = mapped_column(
+        JSON, default=list
+    )  # admin 지정 고정 문제
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    assignments: Mapped[list["DefenseAssignment"]] = relationship(
+        "DefenseAssignment", back_populates="defense", cascade="all, delete-orphan"
+    )
+
+
+class DefenseAssignment(Base):
+    __tablename__ = "defense_assignments"
+    __table_args__ = (
+        UniqueConstraint("defense_id", "user_id", name="uq_defense_user"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    defense_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("defenses.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # [{problem_id, title, level, url, is_fixed}]
+    problems: Mapped[list] = mapped_column(JSON, nullable=False)
+    refresh_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    defense: Mapped["Defense"] = relationship("Defense", back_populates="assignments")
+    user: Mapped["User"] = relationship("User", back_populates="defense_assignments")
+    submissions: Mapped[list["DefenseSubmission"]] = relationship(
+        "DefenseSubmission", back_populates="assignment", cascade="all, delete-orphan"
+    )
+
+
+class DefenseSubmission(Base):
+    """solved.ac 갱신 시 각 문제의 풀이 여부 기록"""
+
+    __tablename__ = "defense_submissions"
+    __table_args__ = (
+        UniqueConstraint("assignment_id", "problem_id", name="uq_assign_problem"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    assignment_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("defense_assignments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    problem_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    solved: Mapped[bool] = mapped_column(Boolean, default=False)
+    checked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    assignment: Mapped["DefenseAssignment"] = relationship(
+        "DefenseAssignment", back_populates="submissions"
+    )

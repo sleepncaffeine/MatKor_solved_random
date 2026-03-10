@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Nav from '../components/layout/Nav'
 import { recommend as apiRecommend } from '../api/recommend'
 import useAuthStore from '../store/auth'
 
@@ -156,43 +157,7 @@ export default function Recommend() {
         }}
       />
 
-      {/* 헤더 */}
-      <header className="border-b border-bg-border bg-bg-surface/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-accent-blue font-semibold">BOJ</span>
-            <span className="text-bg-border">/</span>
-            <span className="font-mono text-text-secondary">rec</span>
-          </div>
-          <nav className="flex items-center gap-6">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="text-text-secondary hover:text-text-primary text-sm transition-colors"
-            >
-              대시보드
-            </button>
-            <span className="text-text-primary text-sm border-b border-accent-blue pb-0.5">문제 추천</span>
-            {user?.role === 'admin' && (
-              <button
-                onClick={() => navigate('/admin/users')}
-                className="text-accent-amber hover:text-amber-300 text-sm transition-colors font-mono"
-              >
-                admin
-              </button>
-            )}
-            <button
-              onClick={() => {
-                localStorage.removeItem('access_token')
-                localStorage.removeItem('refresh_token')
-                navigate('/login')
-              }}
-              className="text-text-muted hover:text-accent-red text-sm transition-colors"
-            >
-              로그아웃
-            </button>
-          </nav>
-        </div>
-      </header>
+      <Nav />
 
       <main className="max-w-5xl mx-auto px-6 py-10 animate-fade-in">
         <div className="grid grid-cols-[340px_1fr] gap-8 items-start">

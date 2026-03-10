@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Nav from '../components/layout/Nav'
 import { getMe, getMyStats } from '../api/user'
 import useAuthStore from '../store/auth'
-
 
 // solved.ac 공식 rating → tier 변환표 (이미지 기준)
 // tier 숫자: 1=Bronze V ... 30=Ruby I, 31=Master
@@ -182,33 +182,7 @@ export default function Dashboard() {
         }}
       />
 
-      {/* 헤더 */}
-      <header className="border-b border-bg-border bg-bg-surface/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-accent-blue font-semibold">BOJ</span>
-            <span className="text-bg-border">/</span>
-            <span className="font-mono text-text-secondary">rec</span>
-          </div>
-          <nav className="flex items-center gap-6">
-            <span className="text-text-primary text-sm border-b border-accent-blue pb-0.5">대시보드</span>
-            <button onClick={() => navigate('/recommend')} className="text-text-secondary hover:text-text-primary text-sm transition-colors">
-              문제 추천
-            </button>
-            {user.role === 'admin' && (
-              <button onClick={() => navigate('/admin/users')} className="text-accent-amber hover:text-amber-300 text-sm transition-colors font-mono">
-                admin
-              </button>
-            )}
-            <button
-              onClick={() => { localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); navigate('/login') }}
-              className="text-text-muted hover:text-accent-red text-sm transition-colors"
-            >
-              로그아웃
-            </button>
-          </nav>
-        </div>
-      </header>
+      <Nav />
 
       <main className="max-w-5xl mx-auto px-6 py-10 space-y-8 animate-fade-in">
         {/* 프로필 */}
