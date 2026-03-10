@@ -11,10 +11,6 @@ class SolvedACError(Exception):
 
 
 async def fetch_user_info(handle: str) -> dict:
-    """
-    Returns solved.ac user object.
-    Raises SolvedACError if handle not found or API unreachable.
-    """
     url = f"{BASE}/user/show"
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(url, params={"handle": handle}, headers=HEADERS)
@@ -27,25 +23,29 @@ async def fetch_user_info(handle: str) -> dict:
     return resp.json()
 
 
-async def fetch_user_tag_stats(handle: str) -> list[dict]:
+async def fetch_user_tag_ratings(handle: str) -> list[dict]:
     """
-    Returns list of tag stat objects:
+    GET /user/tag_ratings
+    Returns list of:
     {
-      "tag": {"key": "dp", "displayNames": [{"language": "ko", "name": "..."}, ...]},
-      "solvedCount": 42,
-      "level": 14
+      "tag": {"key": "dp", "displayNames": [...]},
+      "solvedCount": 72,
+      "rating": 1541,
+      "ratingByProblemsSum": ...,
+      ...
     }
     """
-    url = f"{BASE}/user/problem_tag_stats"
+    url = f"{BASE}/user/tag_ratings"
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(url, params={"handle": handle}, headers=HEADERS)
 
+    if resp.status_code == 404:
+        raise SolvedACError(f"Handle '{handle}' not found on solved.ac")
     if resp.status_code != 200:
-        raise SolvedACError(f"solved.ac tag stats error: {resp.status_code}")
+        raise SolvedACError(f"solved.ac tag ratings error: {resp.status_code}")
 
-    data = resp.json()
-    # API returns {"count": N, "items": [...]}
-    return data.get("items", [])
+    # 응답이 배열임 (count/items 래퍼 없음)
+    return resp.json()
 
 
 async def search_problems(query: str, page: int = 1) -> dict:
@@ -64,9 +64,9 @@ async def search_problems(query: str, page: int = 1) -> dict:
     return resp.json()
 
 
-def parse_tag_stats(items: list[dict]) -> list[dict]:
+def parse_tag_ratings(items: list[dict]) -> list[dict]:
     """
-    Normalizes raw tag stat items into a flat structure for DB storage.
+    Normalizes raw tag_ratings items into a flat structure for DB storage.
     """
     result = []
     for item in items:
@@ -88,7 +88,7 @@ def parse_tag_stats(items: list[dict]) -> list[dict]:
                 "tag_name_ko": name_ko,
                 "tag_name_en": name_en,
                 "solved_count": item.get("solvedCount", 0),
-                "level": item.get("level", 0),
+                "tag_rating": item.get("rating", 0),
             }
         )
     return result

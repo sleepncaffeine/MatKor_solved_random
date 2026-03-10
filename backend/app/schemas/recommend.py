@@ -21,4 +21,5 @@ class ProblemOut(BaseModel):
 
 class RecommendResponse(BaseModel):
     problems: list[ProblemOut]
-    query_used: str  # 디버깅/투명성을 위해 실제 검색 쿼리 반환
+    query_used: str
+    effective_tier: int  # 실제 추천에 사용된 tier (태그 rating 기반)

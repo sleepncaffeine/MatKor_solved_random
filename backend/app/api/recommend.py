@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.user import RecommendationHistory, User
 from app.schemas.recommend import RecommendRequest, RecommendResponse
 from app.services.recommender import recommend
+from app.services.user import get_user_tag_stats
 
 router = APIRouter(prefix="/recommend", tags=["recommend"])
 
@@ -22,12 +23,17 @@ async def get_recommendations(
             detail="BOJ handle not registered. Register your handle first.",
         )
 
+    # DB에서 태그별 rating 로드 → {tag_key: tag_rating}
+    tag_stats = await get_user_tag_stats(db, current_user.id)
+    tag_ratings = {s.tag_key: s.tag_rating for s in tag_stats}
+
     try:
         result = await recommend(
             tags=body.tags,
             tag_logic=body.tag_logic,
             mode=body.mode,
             tier=current_user.tier,
+            tag_ratings=tag_ratings,
             handle=current_user.boj_handle,
             count=body.count,
         )

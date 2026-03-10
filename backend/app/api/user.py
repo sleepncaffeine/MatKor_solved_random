@@ -16,8 +16,8 @@ from app.schemas.user import (
 from app.services.solved_ac import (
     SolvedACError,
     fetch_user_info,
-    fetch_user_tag_stats,
-    parse_tag_stats,
+    fetch_user_tag_ratings,
+    parse_tag_ratings,
 )
 from app.services.user import get_user_by_handle, get_user_tag_stats
 
@@ -45,7 +45,7 @@ async def register_handle(
     # solved.ac에서 유저 정보 검증 및 fetch
     try:
         user_info = await fetch_user_info(body.handle)
-        tag_items = await fetch_user_tag_stats(body.handle)
+        tag_items = await fetch_user_tag_ratings(body.handle)
     except SolvedACError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -56,7 +56,7 @@ async def register_handle(
         current_user.tier = user_info.get("tier", 0)
 
     # 태그 통계 upsert
-    parsed = parse_tag_stats(tag_items)
+    parsed = parse_tag_ratings(tag_items)
     now = datetime.now(timezone.utc)
 
     for stat in parsed:
@@ -70,7 +70,7 @@ async def register_handle(
 
         if existing_stat:
             existing_stat.solved_count = stat["solved_count"]
-            existing_stat.level = stat["level"]
+            existing_stat.tag_rating = stat["tag_rating"]
             existing_stat.tag_name_ko = stat["tag_name_ko"]
             existing_stat.tag_name_en = stat["tag_name_en"]
             existing_stat.updated_at = now

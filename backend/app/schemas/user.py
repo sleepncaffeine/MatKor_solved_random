@@ -25,7 +25,7 @@ class TagStatOut(BaseModel):
     tag_name_ko: str
     tag_name_en: str
     solved_count: int
-    level: int
+    tag_rating: int
     updated_at: datetime
 
     model_config = {"from_attributes": True}

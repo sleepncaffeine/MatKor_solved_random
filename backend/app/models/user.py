@@ -90,8 +90,8 @@ class UserTagStat(Base):
     )  # e.g. "다이나믹 프로그래밍"
     tag_name_en: Mapped[str] = mapped_column(String(100), nullable=False)
     solved_count: Mapped[int] = mapped_column(Integer, default=0)
-    # solved.ac가 계산한 해당 태그에서의 유저 레벨 (0~30)
-    level: Mapped[int] = mapped_column(Integer, default=0)
+    # solved.ac가 계산한 해당 태그에서의 유저 레이팅 (user/tag_ratings 엔드포인트)
+    tag_rating: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )

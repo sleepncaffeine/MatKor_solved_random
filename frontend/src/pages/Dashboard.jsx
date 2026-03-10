@@ -14,12 +14,12 @@ const TIER_LABELS = [
 
 const TIER_COLORS = [
   '#9e9e9e',  // 0 unrated
-  '#ad5600','#ad5600','#ad5600','#ad5600','#ad5600', // 1-5 bronze
-  '#435f7a','#435f7a','#435f7a','#435f7a','#435f7a', // 6-10 silver
-  '#ec9a00','#ec9a00','#ec9a00','#ec9a00','#ec9a00', // 11-15 gold
-  '#27e2a4','#27e2a4','#27e2a4','#27e2a4','#27e2a4', // 16-20 platinum
-  '#00b4fc','#00b4fc','#00b4fc','#00b4fc','#00b4fc', // 21-25 diamond
-  '#ff0062','#ff0062','#ff0062','#ff0062','#ff0062', // 26-30 ruby
+  '#ad5600', '#ad5600', '#ad5600', '#ad5600', '#ad5600', // 1-5 bronze
+  '#435f7a', '#435f7a', '#435f7a', '#435f7a', '#435f7a', // 6-10 silver
+  '#ec9a00', '#ec9a00', '#ec9a00', '#ec9a00', '#ec9a00', // 11-15 gold
+  '#27e2a4', '#27e2a4', '#27e2a4', '#27e2a4', '#27e2a4', // 16-20 platinum
+  '#00b4fc', '#00b4fc', '#00b4fc', '#00b4fc', '#00b4fc', // 21-25 diamond
+  '#ff0062', '#ff0062', '#ff0062', '#ff0062', '#ff0062', // 26-30 ruby
 ]
 
 function TierBadge({ tier }) {
@@ -42,27 +42,40 @@ function StatCard({ label, value, sub }) {
   )
 }
 
-function TagBar({ tag }) {
-  const pct = Math.min((tag.level / 30) * 100, 100)
-  const color = TIER_COLORS[tag.level] ?? '#9e9e9e'
+function TagBar({ tag, maxRating }) {
+  const pct = maxRating > 0 ? Math.min((tag.tag_rating / maxRating) * 100, 100) : 0
+  // rating → tier 색상 (대략적 매핑)
+  const getRatingColor = (r) => {
+    if (r >= 2400) return '#ff0062'      // ruby
+    if (r >= 1800) return '#00b4fc'      // diamond
+    if (r >= 1200) return '#27e2a4'      // platinum
+    if (r >= 600) return '#ec9a00'      // gold
+    if (r >= 100) return '#435f7a'      // silver
+    if (r >= 1) return '#ad5600'      // bronze
+    return '#6b7280'
+  }
   return (
     <div className="flex items-center gap-3">
       <span className="text-text-secondary text-sm font-mono w-36 truncate shrink-0">{tag.tag_name_ko}</span>
       <div className="flex-1 h-1.5 bg-bg-raised rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, backgroundColor: color }}
+          style={{ width: `${pct}%`, backgroundColor: getRatingColor(tag.tag_rating) }}
         />
       </div>
-      <span className="text-text-muted text-xs font-mono w-8 text-right">{tag.solved_count}</span>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-text-muted text-xs font-mono w-8 text-right">{tag.solved_count}</span>
+        <span className="text-xs font-mono w-12 text-right" style={{ color: getRatingColor(tag.tag_rating) }}>
+          {tag.tag_rating > 0 ? tag.tag_rating : '—'}
+        </span>
+      </div>
     </div>
   )
 }
 
 export default function Dashboard() {
   const navigate = useNavigate()
-//   const { setUser } = useAuthStore()
-  const setUser = useAuthStore((s) => s.setUser)
+  const { setUser } = useAuthStore()
   const user = useAuthStore((s) => s.user)
 
   const [stats, setStats] = useState([])

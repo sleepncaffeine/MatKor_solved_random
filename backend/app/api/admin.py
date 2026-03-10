@@ -15,8 +15,8 @@ from app.schemas.user import (
 from app.services.solved_ac import (
     SolvedACError,
     fetch_user_info,
-    fetch_user_tag_stats,
-    parse_tag_stats,
+    fetch_user_tag_ratings,
+    parse_tag_ratings,
 )
 from app.services.user import (
     get_all_users,
@@ -83,7 +83,7 @@ async def update_user_handle(
 
     try:
         user_info = await fetch_user_info(body.handle)
-        tag_items = await fetch_user_tag_stats(body.handle)
+        tag_items = await fetch_user_tag_ratings(body.handle)
     except SolvedACError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -96,7 +96,7 @@ async def update_user_handle(
     from sqlalchemy import select
     from app.models.user import UserTagStat
 
-    parsed = parse_tag_stats(tag_items)
+    parsed = parse_tag_ratings(tag_items)
     now = datetime.now(timezone.utc)
 
     for stat in parsed:
@@ -109,7 +109,7 @@ async def update_user_handle(
         existing_stat = result.scalar_one_or_none()
         if existing_stat:
             existing_stat.solved_count = stat["solved_count"]
-            existing_stat.level = stat["level"]
+            existing_stat.tag_rating = stat["tag_rating"]
             existing_stat.updated_at = now
         else:
             db.add(UserTagStat(user_id=user.id, **stat))

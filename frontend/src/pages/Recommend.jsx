@@ -14,12 +14,12 @@ const TIER_LABELS = [
 
 const TIER_COLORS = [
   '#9e9e9e',
-  '#ad5600','#ad5600','#ad5600','#ad5600','#ad5600',
-  '#435f7a','#435f7a','#435f7a','#435f7a','#435f7a',
-  '#ec9a00','#ec9a00','#ec9a00','#ec9a00','#ec9a00',
-  '#27e2a4','#27e2a4','#27e2a4','#27e2a4','#27e2a4',
-  '#00b4fc','#00b4fc','#00b4fc','#00b4fc','#00b4fc',
-  '#ff0062','#ff0062','#ff0062','#ff0062','#ff0062',
+  '#ad5600', '#ad5600', '#ad5600', '#ad5600', '#ad5600',
+  '#435f7a', '#435f7a', '#435f7a', '#435f7a', '#435f7a',
+  '#ec9a00', '#ec9a00', '#ec9a00', '#ec9a00', '#ec9a00',
+  '#27e2a4', '#27e2a4', '#27e2a4', '#27e2a4', '#27e2a4',
+  '#00b4fc', '#00b4fc', '#00b4fc', '#00b4fc', '#00b4fc',
+  '#ff0062', '#ff0062', '#ff0062', '#ff0062', '#ff0062',
 ]
 
 // solved.ac 주요 태그 목록
@@ -52,8 +52,8 @@ const COMMON_TAGS = [
 
 const MODES = [
   { key: 'practice', label: '연습', desc: '살짝 낮은 난이도', color: 'text-accent-green' },
-  { key: 'train',    label: '훈련', desc: '현재 티어 수준',   color: 'text-accent-blue' },
-  { key: 'challenge',label: '도전', desc: '살짝 높은 난이도', color: 'text-accent-amber' },
+  { key: 'train', label: '훈련', desc: '현재 티어 수준', color: 'text-accent-blue' },
+  { key: 'challenge', label: '도전', desc: '살짝 높은 난이도', color: 'text-accent-amber' },
 ]
 
 function ProblemCard({ problem, index }) {
@@ -106,6 +106,7 @@ export default function Recommend() {
 
   const [problems, setProblems] = useState([])
   const [queryUsed, setQueryUsed] = useState('')
+  const [effectiveTier, setEffectiveTier] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
@@ -130,6 +131,7 @@ export default function Recommend() {
       const { data } = await apiRecommend(selectedTags, tagLogic, mode, count)
       setProblems(data.problems)
       setQueryUsed(data.query_used)
+      setEffectiveTier(data.effective_tier ?? 0)
       setSearched(true)
     } catch (err) {
       setError(err.response?.data?.detail ?? '추천 요청에 실패했습니다.')
@@ -351,13 +353,20 @@ export default function Recommend() {
 
             {searched && !loading && (
               <>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <h2 className="text-text-primary font-semibold">
                     추천 결과 <span className="text-text-muted font-normal text-sm">({problems.length}문제)</span>
                   </h2>
-                  <code className="text-text-muted text-xs font-mono bg-bg-raised px-2 py-1 rounded truncate max-w-xs">
-                    {queryUsed}
-                  </code>
+                  <div className="flex items-center gap-2">
+                    {effectiveTier > 0 && (
+                      <span className="text-xs font-mono text-accent-green bg-green-950/30 border border-green-800/40 px-2 py-1 rounded">
+                        태그 기준 tier:{effectiveTier}
+                      </span>
+                    )}
+                    <code className="text-text-muted text-xs font-mono bg-bg-raised px-2 py-1 rounded truncate max-w-xs">
+                      {queryUsed}
+                    </code>
+                  </div>
                 </div>
 
                 {problems.length === 0 ? (
