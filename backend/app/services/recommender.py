@@ -2,40 +2,39 @@ from app.models.user import RecommendMode, TagLogic
 from app.schemas.recommend import ProblemOut, RecommendResponse
 from app.services.solved_ac import SolvedACError, search_problems
 
-# solved.ac rating → tier 변환 테이블
-# https://solved.ac 기준: 각 티어의 최소 rating
-# Bronze V=1 ~ Ruby I=30
-RATING_TO_TIER_BREAKPOINTS = [
-    (2800, 30),  # Ruby I
-    (2700, 29),  # Ruby II
-    (2600, 28),
-    (2500, 27),
-    (2400, 26),  # Ruby V
-    (2200, 25),  # Diamond I
-    (2100, 24),
-    (2000, 23),
-    (1900, 22),
-    (1800, 21),  # Diamond V
-    (1600, 20),  # Platinum I
-    (1500, 19),
-    (1400, 18),
-    (1300, 17),
-    (1200, 16),  # Platinum V
-    (1000, 15),  # Gold I
-    (900, 14),
-    (800, 13),
-    (700, 12),
-    (600, 11),  # Gold V
-    (500, 10),  # Silver I
-    (400, 9),
-    (300, 8),
-    (200, 7),
-    (100, 6),  # Silver V
-    (80, 5),  # Bronze I
-    (60, 4),
-    (40, 3),
-    (20, 2),
-    (1, 1),  # Bronze V
+# solved.ac 공식 rating → tier 변환표
+# tier: 0=Unrated, 1=Bronze V ... 30=Ruby I
+RATING_BREAKPOINTS = [
+    (2950, 30),  # Ruby I
+    (2900, 29),  # Ruby II
+    (2850, 28),  # Ruby III
+    (2800, 27),  # Ruby IV
+    (2700, 26),  # Ruby V
+    (2600, 25),  # Diamond I
+    (2500, 24),  # Diamond II
+    (2400, 23),  # Diamond III
+    (2300, 22),  # Diamond IV
+    (2200, 21),  # Diamond V
+    (2100, 20),  # Platinum I
+    (2000, 19),  # Platinum II
+    (1900, 18),  # Platinum III
+    (1750, 17),  # Platinum IV
+    (1600, 16),  # Platinum V
+    (1400, 15),  # Gold I
+    (1250, 14),  # Gold II
+    (1100, 13),  # Gold III
+    (950, 12),  # Gold IV
+    (800, 11),  # Gold V
+    (650, 10),  # Silver I
+    (500, 9),  # Silver II
+    (400, 8),  # Silver III
+    (300, 7),  # Silver IV
+    (200, 6),  # Silver V
+    (150, 5),  # Bronze I
+    (120, 4),  # Bronze II
+    (90, 3),  # Bronze III
+    (60, 2),  # Bronze IV
+    (30, 1),  # Bronze V
     (0, 0),  # Unrated
 ]
 
@@ -50,8 +49,7 @@ TIER_MAX = 30
 
 
 def rating_to_tier(rating: int) -> int:
-    """solved.ac rating 숫자를 tier 숫자(0~30)로 변환."""
-    for min_rating, tier in RATING_TO_TIER_BREAKPOINTS:
+    for min_rating, tier in RATING_BREAKPOINTS:
         if rating >= min_rating:
             return tier
     return 0
@@ -101,17 +99,14 @@ async def recommend(
     tags: list[str],
     tag_logic: TagLogic,
     mode: RecommendMode,
-    tier: int,  # 전체 tier (fallback용)
-    tag_ratings: dict[str, int],  # {tag_key: rating} — DB에서 전달
+    tier: int,
+    tag_ratings: dict[str, int],
     handle: str | None,
     count: int = 10,
 ) -> RecommendResponse:
     """
-    태그별 rating 기반 추천.
-    - 단일 태그: 해당 태그의 rating으로 tier 계산
-    - 복수 태그 AND: 선택 태그들의 rating 평균으로 tier 계산
-    - 복수 태그 OR: 태그별로 각각 tier 계산 후 평균
-    - 태그 rating이 없으면 전체 tier 사용
+    선택한 태그들의 tag_rating 평균을 tier로 변환해 추천 난이도 기준으로 사용.
+    태그 rating이 없으면 전체 tier로 fallback.
     """
     if tag_ratings and tags:
         ratings = [tag_ratings[t] for t in tags if t in tag_ratings]
