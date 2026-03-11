@@ -5,7 +5,7 @@ import Register from './pages/Register'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Recommend from './pages/Recommend'
-import AdminUsers from './pages/AdminUsers'
+import AdminUsers from './pages/admin/AdminUsers'
 import Defense from './pages/Defense'
 import AdminDefense from './pages/admin/AdminDefense'
 

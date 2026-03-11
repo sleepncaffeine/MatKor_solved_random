@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Nav from '../components/layout/Nav'
-import useAuthStore from '../store/auth'
-import client from '../api/client'
+import Nav from '../../components/layout/Nav'
+import useAuthStore from '../../store/auth'
+import client from '../../api/client'
 
 const TIER_LABELS = [
   'Unrated',
@@ -163,8 +163,8 @@ function UserDetailModal({ user, onClose, onUpdated }) {
 
       {msg && (
         <div className={`mb-4 px-3 py-2 rounded-lg text-sm border ${msg.type === 'ok'
-            ? 'bg-green-950/30 border-green-800/40 text-accent-green'
-            : 'bg-red-950/30 border-red-900/40 text-accent-red'
+          ? 'bg-green-950/30 border-green-800/40 text-accent-green'
+          : 'bg-red-950/30 border-red-900/40 text-accent-red'
           }`}>
           {msg.text}
         </div>
