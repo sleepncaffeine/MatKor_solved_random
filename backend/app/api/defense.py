@@ -245,33 +245,30 @@ async def sync_submissions(
         raise HTTPException(status_code=404, detail="Assignment not found")
 
     # solved.ac에서 유저의 최근 풀이 확인
-    # search/problem?query=solved_by:handle 로 풀이 여부 확인
-    from app.services.solved_ac import search_problems
-
-    problem_ids = [p["problem_id"] for p in assignment.problems]
-
-    # 각 문제를 solved_by:handle로 확인
+    # 각 문제를 개별 쿼리로 확인: "id:X solved_by:handle"
+    # solved.ac search에서 결과가 있으면 해당 유저가 푼 것
     from app.services.solved_ac import SolvedACError
     import httpx
     from app.core.config import settings
 
+    problem_ids = [p["problem_id"] for p in assignment.problems]
     solved_ids = set()
-    try:
-        ids_str = " ".join(str(pid) for pid in problem_ids)
-        # id:X|id:Y 형태로 검색 후 solved_by 필터
-        id_pipe = "|".join(str(p) for p in problem_ids)
-        query = f"id:{id_pipe} solved_by:{current_user.boj_handle}"
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
-                f"{settings.SOLVED_AC_BASE_URL}/search/problem",
-                params={"query": query, "page": 1},
-                headers={"Accept": "application/json"},
-            )
-        if resp.status_code == 200:
-            data = resp.json()
-            solved_ids = {item["problemId"] for item in data.get("items", [])}
-    except Exception:
-        pass
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        for pid in problem_ids:
+            try:
+                query = f"id:{pid} solved_by:{current_user.boj_handle}"
+                resp = await client.get(
+                    f"{settings.SOLVED_AC_BASE_URL}/search/problem",
+                    params={"query": query, "page": 1},
+                    headers={"Accept": "application/json"},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("count", 0) > 0:
+                        solved_ids.add(pid)
+            except Exception:
+                pass
 
     # DB upsert
     now = datetime.now(timezone.utc)

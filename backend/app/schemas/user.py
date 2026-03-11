@@ -13,6 +13,7 @@ class UserOut(BaseModel):
     tier: int
     tier_override: bool
     rating: int
+    defense_mode: str
     is_active: bool
     created_at: datetime
     updated_at: datetime

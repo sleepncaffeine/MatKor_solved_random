@@ -103,6 +103,10 @@ async def get_participants(
                 "solved": solved_count,
                 "refresh_used": a.refresh_used,
                 "joined_at": a.created_at,
+                "problems": [
+                    {**p, "solved": sub_map.get(p["problem_id"], False)}
+                    for p in a.problems
+                ],
             }
         )
     return out

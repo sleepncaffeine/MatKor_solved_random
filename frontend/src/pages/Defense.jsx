@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../components/layout/Nav'
 import useAuthStore from '../store/auth'
+import { getMe } from '../api/user'
 import {
     getActiveDefenses, getMyAssignments,
     joinDefense, refreshDefense, syncDefense, updateDefenseMode
@@ -44,6 +45,12 @@ function formatRemaining(endAt) {
     return `${h}시간 ${m}분`
 }
 
+function formatDate(d) {
+    return new Date(d).toLocaleDateString('ko-KR', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    })
+}
+
 function ProblemRow({ p }) {
     const tier = TIER_TABLE[p.level] ?? TIER_TABLE[0]
     return (
@@ -55,19 +62,11 @@ function ProblemRow({ p }) {
         ].join(' ')}>
             <div className="flex items-center gap-3 min-w-0">
                 {p.is_fixed && (
-                    <span className="text-xs font-mono text-accent-amber border border-amber-700/40 px-1.5 py-0.5 rounded shrink-0">
-                        고정
-                    </span>
+                    <span className="text-xs font-mono text-accent-amber border border-amber-700/40 px-1.5 py-0.5 rounded shrink-0">고정</span>
                 )}
-                <span className="text-xs font-mono shrink-0" style={{ color: tier.color }}>
-                    {tier.label}
-                </span>
-                <a
-                    href={p.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-text-primary hover:text-accent-blue transition-colors font-mono text-sm truncate"
-                >
+                <span className="text-xs font-mono shrink-0" style={{ color: tier.color }}>{tier.label}</span>
+                <a href={p.url} target="_blank" rel="noopener noreferrer"
+                    className="text-text-primary hover:text-accent-blue transition-colors font-mono text-sm truncate">
                     #{p.problem_id} {p.title}
                 </a>
             </div>
@@ -79,11 +78,10 @@ function ProblemRow({ p }) {
     )
 }
 
-function AssignmentCard({ assignment, onSync, onRefresh, syncing, refreshing }) {
-    const solved = assignment.problems.filter((p) => p.solved).length
+function ActiveAssignmentCard({ assignment, onSync, onRefresh, syncing, refreshing }) {
+    const solved = assignment.problems.filter(p => p.solved).length
     const total = assignment.problems.length
     const pct = total > 0 ? Math.round((solved / total) * 100) : 0
-    const ended = new Date(assignment.defense_end_at) < new Date()
 
     return (
         <div className="card space-y-4">
@@ -91,7 +89,7 @@ function AssignmentCard({ assignment, onSync, onRefresh, syncing, refreshing }) 
                 <div>
                     <h3 className="text-text-primary font-semibold">{assignment.defense_title}</h3>
                     <p className="text-text-muted text-xs font-mono mt-0.5">
-                        {ended ? '종료됨' : `${formatRemaining(assignment.defense_end_at)} 남음`}
+                        {formatRemaining(assignment.defense_end_at)} 남음
                     </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -100,45 +98,65 @@ function AssignmentCard({ assignment, onSync, onRefresh, syncing, refreshing }) 
                 </div>
             </div>
 
-            {/* 진행 바 */}
             <div className="h-1.5 bg-bg-raised rounded-full overflow-hidden">
-                <div
-                    className="h-full bg-accent-green rounded-full transition-all duration-500"
-                    style={{ width: `${pct}%` }}
-                />
+                <div className="h-full bg-accent-green rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%` }} />
             </div>
 
-            {/* 문제 목록 */}
             <div className="space-y-2">
-                {assignment.problems.map((p) => (
-                    <ProblemRow key={p.problem_id} p={p} />
-                ))}
+                {assignment.problems.map(p => <ProblemRow key={p.problem_id} p={p} />)}
             </div>
 
-            {/* 액션 버튼 */}
-            {!ended && (
-                <div className="flex gap-2 pt-1">
-                    <button
-                        onClick={() => onSync(assignment.defense_id)}
-                        disabled={syncing}
-                        className="flex-1 py-2 text-sm border border-accent-blue text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-all disabled:opacity-50 font-mono"
-                    >
-                        {syncing ? '갱신 중...' : '제출 현황 갱신'}
+            <div className="flex gap-2 pt-1">
+                <button onClick={() => onSync(assignment.defense_id)} disabled={syncing}
+                    className="flex-1 py-2 text-sm border border-accent-blue text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-all disabled:opacity-50 font-mono">
+                    {syncing ? '갱신 중...' : '제출 현황 갱신'}
+                </button>
+                {!assignment.refresh_used ? (
+                    <button onClick={() => onRefresh(assignment.defense_id)} disabled={refreshing}
+                        className="flex-1 py-2 text-sm border border-accent-amber text-accent-amber hover:bg-amber-950/20 rounded-lg transition-all disabled:opacity-50 font-mono">
+                        {refreshing ? '교체 중...' : '문제 교체 (1회)'}
                     </button>
-                    {!assignment.refresh_used && (
-                        <button
-                            onClick={() => onRefresh(assignment.defense_id)}
-                            disabled={refreshing}
-                            className="flex-1 py-2 text-sm border border-accent-amber text-accent-amber hover:bg-amber-950/20 rounded-lg transition-all disabled:opacity-50 font-mono"
-                        >
-                            {refreshing ? '교체 중...' : '문제 교체 (1회)'}
-                        </button>
-                    )}
-                    {assignment.refresh_used && (
-                        <div className="flex-1 py-2 text-sm text-center text-text-muted font-mono border border-bg-border rounded-lg">
-                            교체 소진
-                        </div>
-                    )}
+                ) : (
+                    <div className="flex-1 py-2 text-sm text-center text-text-muted font-mono border border-bg-border rounded-lg">
+                        교체 소진
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+function EndedAssignmentCard({ assignment }) {
+    const [open, setOpen] = useState(false)
+    const solved = assignment.problems.filter(p => p.solved).length
+    const total = assignment.problems.length
+    const pct = total > 0 ? Math.round((solved / total) * 100) : 0
+
+    return (
+        <div className="card space-y-0">
+            <button
+                onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center justify-between gap-4 text-left"
+            >
+                <div className="min-w-0">
+                    <h3 className="text-text-secondary font-semibold">{assignment.defense_title}</h3>
+                    <p className="text-text-muted text-xs font-mono mt-0.5">
+                        {formatDate(assignment.defense_end_at)} 종료
+                    </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono text-sm text-text-secondary">{solved}/{total}</span>
+                    <div className="w-20 h-1.5 bg-bg-raised rounded-full overflow-hidden">
+                        <div className="h-full bg-text-muted rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-text-muted text-xs">{open ? '▲' : '▼'}</span>
+                </div>
+            </button>
+
+            {open && (
+                <div className="space-y-2 mt-4 pt-4 border-t border-bg-border">
+                    {assignment.problems.map(p => <ProblemRow key={p.problem_id} p={p} />)}
                 </div>
             )}
         </div>
@@ -147,9 +165,10 @@ function AssignmentCard({ assignment, onSync, onRefresh, syncing, refreshing }) 
 
 export default function Defense() {
     const navigate = useNavigate()
-    const user = useAuthStore((s) => s.user)
-    const setUser = useAuthStore((s) => s.setUser)
+    const user = useAuthStore(s => s.user)
+    const setUser = useAuthStore(s => s.setUser)
 
+    const [tab, setTab] = useState('active') // 'active' | 'ended'
     const [activeDefenses, setActiveDefenses] = useState([])
     const [myAssignments, setMyAssignments] = useState([])
     const [loading, setLoading] = useState(true)
@@ -167,16 +186,27 @@ export default function Defense() {
             ])
             setActiveDefenses(activeRes.data)
             setMyAssignments(myRes.data)
-        } catch (e) {
+        } catch {
             setError('데이터를 불러오지 못했습니다.')
         } finally {
             setLoading(false)
         }
     }
 
-    useEffect(() => { fetchAll() }, [])
+    useEffect(() => {
+        // getMe로 defense_mode 포함한 최신 유저 정보 로드
+        getMe().then(r => setUser(r.data)).catch(() => { })
+        fetchAll()
+    }, [])
 
-    const myDefenseIds = new Set(myAssignments.map((a) => a.defense_id))
+    const now = new Date()
+    const myActiveAssignments = myAssignments.filter(
+        a => new Date(a.defense_end_at) >= now
+    )
+    const myEndedAssignments = myAssignments.filter(
+        a => new Date(a.defense_end_at) < now
+    )
+    const myDefenseIds = new Set(myAssignments.map(a => a.defense_id))
 
     const handleJoin = async (defenseId) => {
         setJoining(defenseId)
@@ -221,7 +251,7 @@ export default function Defense() {
         try {
             await updateDefenseMode(mode)
             setUser({ ...user, defense_mode: mode })
-        } catch (e) {
+        } catch {
             setError('모드 변경 실패')
         } finally {
             setModeUpdating(false)
@@ -230,13 +260,12 @@ export default function Defense() {
 
     return (
         <div className="min-h-screen bg-bg-base">
-            <div
-                className="fixed inset-0 opacity-[0.025] pointer-events-none"
+            <div className="fixed inset-0 opacity-[0.025] pointer-events-none"
                 style={{
                     backgroundImage: 'linear-gradient(#4f9cf9 1px, transparent 1px), linear-gradient(90deg, #4f9cf9 1px, transparent 1px)',
                     backgroundSize: '48px 48px',
-                }}
-            />
+                }} />
+
             <Nav />
 
             <main className="max-w-4xl mx-auto px-6 py-10 animate-fade-in space-y-10">
@@ -248,18 +277,15 @@ export default function Defense() {
                         <span className="text-text-muted text-xs font-mono">디펜스 문제 난이도에 적용됩니다</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                        {MODES.map((m) => {
+                        {MODES.map(m => {
                             const active = user?.defense_mode === m.key
                             return (
-                                <button
-                                    key={m.key}
-                                    onClick={() => handleModeChange(m.key)}
+                                <button key={m.key} onClick={() => handleModeChange(m.key)}
                                     disabled={modeUpdating}
                                     className={[
                                         'py-3 rounded-lg border transition-all text-left px-4 disabled:opacity-50',
                                         active ? 'border-accent-blue bg-accent-blue/10' : 'border-bg-border hover:border-text-muted',
-                                    ].join(' ')}
-                                >
+                                    ].join(' ')}>
                                     <p className={`font-mono text-sm font-semibold ${active ? m.color : 'text-text-secondary'}`}>{m.label}</p>
                                     <p className="text-text-muted text-xs mt-0.5">{m.desc}</p>
                                 </button>
@@ -275,7 +301,7 @@ export default function Defense() {
                     </div>
                 )}
 
-                {/* 활성 디펜스 */}
+                {/* 진행 중인 디펜스 목록 */}
                 <section className="space-y-4">
                     <h2 className="text-text-primary font-semibold text-lg">진행 중인 디펜스</h2>
                     {loading ? (
@@ -285,12 +311,12 @@ export default function Defense() {
                             <p className="text-text-muted text-sm">현재 진행 중인 디펜스가 없습니다.</p>
                         </div>
                     ) : (
-                        activeDefenses.map((d) => (
+                        activeDefenses.map(d => (
                             <div key={d.id} className="card flex items-center justify-between gap-4">
                                 <div className="min-w-0">
                                     <h3 className="text-text-primary font-semibold">{d.title}</h3>
                                     <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                        {d.tags.map((t) => <span key={t} className="tag-badge">{t}</span>)}
+                                        {d.tags.map(t => <span key={t} className="tag-badge">{t}</span>)}
                                     </div>
                                     <p className="text-text-muted text-xs font-mono mt-1.5">
                                         문제 {d.problem_count}개 · {formatRemaining(d.end_at)} 남음
@@ -299,11 +325,8 @@ export default function Defense() {
                                 {myDefenseIds.has(d.id) ? (
                                     <span className="text-accent-green text-xs font-mono shrink-0">참가 중</span>
                                 ) : (
-                                    <button
-                                        onClick={() => handleJoin(d.id)}
-                                        disabled={joining === d.id}
-                                        className="shrink-0 px-4 py-2 bg-accent-blue hover:bg-blue-400 text-bg-base text-sm font-semibold rounded-lg transition-all disabled:opacity-50"
-                                    >
+                                    <button onClick={() => handleJoin(d.id)} disabled={joining === d.id}
+                                        className="shrink-0 px-4 py-2 bg-accent-blue hover:bg-blue-400 text-bg-base text-sm font-semibold rounded-lg transition-all disabled:opacity-50">
                                         {joining === d.id ? '참가 중...' : '참가하기'}
                                     </button>
                                 )}
@@ -312,20 +335,71 @@ export default function Defense() {
                     )}
                 </section>
 
-                {/* 내 디펜스 */}
+                {/* 내 디펜스 탭 */}
                 {myAssignments.length > 0 && (
                     <section className="space-y-4">
-                        <h2 className="text-text-primary font-semibold text-lg">내 디펜스 현황</h2>
-                        {myAssignments.map((a) => (
-                            <AssignmentCard
-                                key={a.id}
-                                assignment={a}
-                                onSync={handleSync}
-                                onRefresh={handleRefresh}
-                                syncing={syncing === a.defense_id}
-                                refreshing={refreshing === a.defense_id}
-                            />
-                        ))}
+                        {/* 탭 헤더 */}
+                        <div className="flex items-center gap-1 border-b border-bg-border">
+                            <button
+                                onClick={() => setTab('active')}
+                                className={[
+                                    'px-4 py-2 text-sm font-mono transition-colors border-b-2 -mb-px',
+                                    tab === 'active'
+                                        ? 'border-accent-blue text-text-primary'
+                                        : 'border-transparent text-text-muted hover:text-text-secondary',
+                                ].join(' ')}
+                            >
+                                진행 중
+                                {myActiveAssignments.length > 0 && (
+                                    <span className="ml-1.5 text-xs bg-accent-blue/20 text-accent-blue px-1.5 py-0.5 rounded-full">
+                                        {myActiveAssignments.length}
+                                    </span>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setTab('ended')}
+                                className={[
+                                    'px-4 py-2 text-sm font-mono transition-colors border-b-2 -mb-px',
+                                    tab === 'ended'
+                                        ? 'border-text-muted text-text-primary'
+                                        : 'border-transparent text-text-muted hover:text-text-secondary',
+                                ].join(' ')}
+                            >
+                                종료된 디펜스
+                                {myEndedAssignments.length > 0 && (
+                                    <span className="ml-1.5 text-xs bg-bg-raised text-text-muted px-1.5 py-0.5 rounded-full">
+                                        {myEndedAssignments.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+
+                        {tab === 'active' && (
+                            myActiveAssignments.length === 0 ? (
+                                <div className="card text-center py-8 text-text-muted text-sm">
+                                    참가 중인 진행 중 디펜스가 없습니다.
+                                </div>
+                            ) : (
+                                myActiveAssignments.map(a => (
+                                    <ActiveAssignmentCard key={a.id} assignment={a}
+                                        onSync={handleSync} onRefresh={handleRefresh}
+                                        syncing={syncing === a.defense_id}
+                                        refreshing={refreshing === a.defense_id} />
+                                ))
+                            )
+                        )}
+
+                        {tab === 'ended' && (
+                            myEndedAssignments.length === 0 ? (
+                                <div className="card text-center py-8 text-text-muted text-sm">
+                                    종료된 디펜스가 없습니다.
+                                </div>
+                            ) : (
+                                myEndedAssignments.map(a => (
+                                    <EndedAssignmentCard key={a.id} assignment={a} />
+                                ))
+                            )
+                        )}
                     </section>
                 )}
             </main>

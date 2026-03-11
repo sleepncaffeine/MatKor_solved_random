@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../components/layout/Nav'
-import { getMe, getMyStats } from '../api/user'
+import { getMe, getMyStats, refreshMyStats } from '../api/user'
 import useAuthStore from '../store/auth'
 
 // solved.ac 공식 rating → tier 변환표 (이미지 기준)
@@ -143,6 +143,7 @@ export default function Dashboard() {
 
   const [stats, setStats] = useState([])
   const [loadingStats, setLoadingStats] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     getMe()
@@ -159,6 +160,20 @@ export default function Dashboard() {
       })
       .finally(() => setLoadingStats(false))
   }, [user])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await refreshMyStats()
+      const [meRes, statsRes] = await Promise.all([getMe(), getMyStats()])
+      setUser(meRes.data)
+      setStats([...statsRes.data].sort((a, b) => b.tag_rating - a.tag_rating))
+    } catch (e) {
+      // silent fail
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   if (!user) {
     return (
@@ -200,14 +215,25 @@ export default function Dashboard() {
             </div>
             <TierBadge tier={user.tier} />
           </div>
-          {!user.boj_handle && (
-            <button
-              onClick={() => navigate('/onboarding')}
-              className="text-sm border border-accent-blue text-accent-blue hover:bg-accent-blue hover:text-bg-base px-4 py-2 rounded-lg transition-all"
-            >
-              핸들 등록
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {user.boj_handle && (
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="text-sm border border-bg-border text-text-secondary hover:border-text-muted hover:text-text-primary px-4 py-2 rounded-lg transition-all disabled:opacity-50 font-mono"
+              >
+                {refreshing ? '갱신 중...' : '현황 갱신'}
+              </button>
+            )}
+            {!user.boj_handle && (
+              <button
+                onClick={() => navigate('/onboarding')}
+                className="text-sm border border-accent-blue text-accent-blue hover:bg-accent-blue hover:text-bg-base px-4 py-2 rounded-lg transition-all"
+              >
+                핸들 등록
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 스탯 카드 */}

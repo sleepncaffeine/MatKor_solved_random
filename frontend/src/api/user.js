@@ -4,3 +4,4 @@ export const getMe = () => client.get("/user/me");
 export const registerHandle = (handle) =>
   client.put("/user/me/handle", { handle });
 export const getMyStats = () => client.get("/user/me/stats");
+export const refreshMyStats = () => client.post("/user/me/refresh");

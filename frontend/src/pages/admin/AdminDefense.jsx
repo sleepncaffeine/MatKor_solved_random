@@ -10,9 +10,62 @@ import {
 
 const TAG_PRESETS = ['dp', 'graphs', 'greedy', 'math', 'sorting', 'bfs', 'dfs', 'tree', 'string', 'binary_search']
 
+const TIER_TABLE = [
+    { label: 'Unrated', color: '#6b7280' },
+    { label: 'Bronze V', color: '#ad5600' }, { label: 'Bronze IV', color: '#ad5600' },
+    { label: 'Bronze III', color: '#ad5600' }, { label: 'Bronze II', color: '#ad5600' },
+    { label: 'Bronze I', color: '#ad5600' },
+    { label: 'Silver V', color: '#435f7a' }, { label: 'Silver IV', color: '#435f7a' },
+    { label: 'Silver III', color: '#435f7a' }, { label: 'Silver II', color: '#435f7a' },
+    { label: 'Silver I', color: '#435f7a' },
+    { label: 'Gold V', color: '#ec9a00' }, { label: 'Gold IV', color: '#ec9a00' },
+    { label: 'Gold III', color: '#ec9a00' }, { label: 'Gold II', color: '#ec9a00' },
+    { label: 'Gold I', color: '#ec9a00' },
+    { label: 'Platinum V', color: '#27e2a4' }, { label: 'Platinum IV', color: '#27e2a4' },
+    { label: 'Platinum III', color: '#27e2a4' }, { label: 'Platinum II', color: '#27e2a4' },
+    { label: 'Platinum I', color: '#27e2a4' },
+    { label: 'Diamond V', color: '#00b4fc' }, { label: 'Diamond IV', color: '#00b4fc' },
+    { label: 'Diamond III', color: '#00b4fc' }, { label: 'Diamond II', color: '#00b4fc' },
+    { label: 'Diamond I', color: '#00b4fc' },
+    { label: 'Ruby V', color: '#ff0062' }, { label: 'Ruby IV', color: '#ff0062' },
+    { label: 'Ruby III', color: '#ff0062' }, { label: 'Ruby II', color: '#ff0062' },
+    { label: 'Ruby I', color: '#ff0062' },
+]
+
+function ProblemList({ problems }) {
+    return (
+        <div className="mt-2 space-y-1 pl-2 border-l-2 border-bg-border">
+            {problems.map(p => {
+                const tier = TIER_TABLE[p.level] ?? TIER_TABLE[0]
+                return (
+                    <div key={p.problem_id} className="flex items-center gap-2 text-xs font-mono">
+                        {p.is_fixed && (
+                            <span className="text-accent-amber border border-amber-700/40 px-1 rounded shrink-0">고정</span>
+                        )}
+                        <span className="shrink-0" style={{ color: tier.color }}>{tier.label}</span>
+                        <a
+                            href={`https://www.acmicpc.net/problem/${p.problem_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-text-secondary hover:text-accent-blue truncate"
+                        >
+                            #{p.problem_id} {p.title}
+                        </a>
+                        {p.solved
+                            ? <span className="text-accent-green shrink-0 ml-auto">✓</span>
+                            : <span className="text-text-muted shrink-0 ml-auto">-</span>
+                        }
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
 function ParticipantModal({ defenseId, title, onClose }) {
     const [rows, setRows] = useState([])
     const [loading, setLoading] = useState(true)
+    const [expanded, setExpanded] = useState(null)
 
     useEffect(() => {
         adminGetParticipants(defenseId).then(r => {
@@ -21,9 +74,12 @@ function ParticipantModal({ defenseId, title, onClose }) {
         })
     }, [defenseId])
 
+    const toggleExpand = (userId) =>
+        setExpanded(prev => prev === userId ? null : userId)
+
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="card w-full max-w-2xl max-h-[80vh] overflow-auto space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="card w-full max-w-2xl max-h-[85vh] overflow-auto space-y-4" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
                     <h3 className="text-text-primary font-semibold">{title} — 참가자</h3>
                     <button onClick={onClose} className="text-text-muted hover:text-text-primary text-lg leading-none">x</button>
@@ -32,32 +88,39 @@ function ParticipantModal({ defenseId, title, onClose }) {
                     rows.length === 0 ? (
                         <p className="text-text-muted text-sm text-center py-8">참가자 없음</p>
                     ) : (
-                        <table className="w-full text-sm font-mono">
-                            <thead>
-                                <tr className="text-text-muted text-xs border-b border-bg-border">
-                                    <th className="text-left py-2">핸들</th>
-                                    <th className="text-left py-2">이메일</th>
-                                    <th className="text-center py-2">모드</th>
-                                    <th className="text-center py-2">진행</th>
-                                    <th className="text-center py-2">교체</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map(r => (
-                                    <tr key={r.user_id} className="border-b border-bg-border/50 hover:bg-bg-raised transition-colors">
-                                        <td className="py-2 text-accent-blue">{r.boj_handle ?? '-'}</td>
-                                        <td className="py-2 text-text-secondary text-xs">{r.email}</td>
-                                        <td className="py-2 text-center">
-                                            <span className={r.defense_mode === 'challenge' ? 'text-accent-amber' : r.defense_mode === 'practice' ? 'text-accent-green' : 'text-accent-blue'}>
-                                                {r.defense_mode}
-                                            </span>
-                                        </td>
-                                        <td className="py-2 text-center">{r.solved}/{r.total}</td>
-                                        <td className="py-2 text-center">{r.refresh_used ? '소진' : '-'}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <div className="space-y-1">
+                            {/* 헤더 */}
+                            <div className="grid grid-cols-[1fr_1fr_80px_60px_50px_24px] gap-2 text-text-muted text-xs font-mono px-2 pb-1 border-b border-bg-border">
+                                <span>핸들</span>
+                                <span>이메일</span>
+                                <span className="text-center">모드</span>
+                                <span className="text-center">진행</span>
+                                <span className="text-center">교체</span>
+                                <span />
+                            </div>
+                            {rows.map(r => (
+                                <div key={r.user_id}>
+                                    <button
+                                        onClick={() => toggleExpand(r.user_id)}
+                                        className="w-full grid grid-cols-[1fr_1fr_80px_60px_50px_24px] gap-2 text-xs font-mono px-2 py-2 rounded hover:bg-bg-raised transition-colors text-left"
+                                    >
+                                        <span className="text-accent-blue truncate">{r.boj_handle ?? '-'}</span>
+                                        <span className="text-text-secondary truncate">{r.email}</span>
+                                        <span className={`text-center ${r.defense_mode === 'challenge' ? 'text-accent-amber' : r.defense_mode === 'practice' ? 'text-accent-green' : 'text-accent-blue'}`}>
+                                            {r.defense_mode}
+                                        </span>
+                                        <span className="text-center text-text-primary">{r.solved}/{r.total}</span>
+                                        <span className="text-center text-text-muted">{r.refresh_used ? '소진' : '-'}</span>
+                                        <span className="text-text-muted text-center">{expanded === r.user_id ? '▲' : '▼'}</span>
+                                    </button>
+                                    {expanded === r.user_id && r.problems?.length > 0 && (
+                                        <div className="px-3 pb-2">
+                                            <ProblemList problems={r.problems} />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     )
                 )}
             </div>
