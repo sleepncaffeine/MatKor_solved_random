@@ -71,7 +71,9 @@ function ProblemRow({ p }) {
                 </a>
             </div>
             {p.solved
-                ? <span className="text-accent-green text-xs font-mono shrink-0">✓ 완료</span>
+                ? p.solved_after_end
+                    ? <span className="text-text-muted text-xs font-mono shrink-0 border border-bg-border px-1.5 py-0.5 rounded">종료 후 완료</span>
+                    : <span className="text-accent-green text-xs font-mono shrink-0">✓ 완료</span>
                 : <span className="text-text-muted text-xs font-mono shrink-0">미해결</span>
             }
         </div>
@@ -79,7 +81,8 @@ function ProblemRow({ p }) {
 }
 
 function ActiveAssignmentCard({ assignment, onSync, onRefresh, syncing, refreshing }) {
-    const solved = assignment.problems.filter(p => p.solved).length
+    const solved = assignment.problems.filter(p => p.solved && !p.solved_after_end).length
+    const solvedAfterEnd = assignment.problems.filter(p => p.solved_after_end).length
     const total = assignment.problems.length
     const pct = total > 0 ? Math.round((solved / total) * 100) : 0
 
@@ -94,6 +97,9 @@ function ActiveAssignmentCard({ assignment, onSync, onRefresh, syncing, refreshi
                 </div>
                 <div className="text-right shrink-0">
                     <span className="font-mono text-lg font-semibold text-text-primary">{solved}/{total}</span>
+                    {solvedAfterEnd > 0 && (
+                        <span className="font-mono text-xs text-text-muted ml-1">(+{solvedAfterEnd})</span>
+                    )}
                     <p className="text-text-muted text-xs">{pct}% 완료</p>
                 </div>
             </div>
@@ -127,9 +133,10 @@ function ActiveAssignmentCard({ assignment, onSync, onRefresh, syncing, refreshi
     )
 }
 
-function EndedAssignmentCard({ assignment }) {
+function EndedAssignmentCard({ assignment, onSync, syncing }) {
     const [open, setOpen] = useState(false)
-    const solved = assignment.problems.filter(p => p.solved).length
+    const solved = assignment.problems.filter(p => p.solved && !p.solved_after_end).length
+    const solvedAfterEnd = assignment.problems.filter(p => p.solved_after_end).length
     const total = assignment.problems.length
     const pct = total > 0 ? Math.round((solved / total) * 100) : 0
 
@@ -146,7 +153,10 @@ function EndedAssignmentCard({ assignment }) {
                     </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono text-sm text-text-secondary">{solved}/{total}</span>
+                    <span className="font-mono text-sm text-text-secondary">
+                        {solved}/{total}
+                        {solvedAfterEnd > 0 && <span className="text-text-muted text-xs ml-1">(+{solvedAfterEnd})</span>}
+                    </span>
                     <div className="w-20 h-1.5 bg-bg-raised rounded-full overflow-hidden">
                         <div className="h-full bg-text-muted rounded-full" style={{ width: `${pct}%` }} />
                     </div>
@@ -155,8 +165,14 @@ function EndedAssignmentCard({ assignment }) {
             </button>
 
             {open && (
-                <div className="space-y-2 mt-4 pt-4 border-t border-bg-border">
-                    {assignment.problems.map(p => <ProblemRow key={p.problem_id} p={p} />)}
+                <div className="space-y-3 mt-4 pt-4 border-t border-bg-border">
+                    <button onClick={() => onSync(assignment.defense_id)} disabled={syncing}
+                        className="w-full py-2 text-xs border border-bg-border text-text-muted hover:border-text-muted hover:text-text-secondary rounded-lg transition-all disabled:opacity-50 font-mono">
+                        {syncing ? '갱신 중...' : '종료 후 제출 현황 갱신'}
+                    </button>
+                    <div className="space-y-2">
+                        {assignment.problems.map(p => <ProblemRow key={p.problem_id} p={p} />)}
+                    </div>
                 </div>
             )}
         </div>
@@ -396,7 +412,8 @@ export default function Defense() {
                                 </div>
                             ) : (
                                 myEndedAssignments.map(a => (
-                                    <EndedAssignmentCard key={a.id} assignment={a} />
+                                    <EndedAssignmentCard key={a.id} assignment={a}
+                                        onSync={handleSync} syncing={syncing === a.defense_id} />
                                 ))
                             )
                         )}

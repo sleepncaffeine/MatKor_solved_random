@@ -216,6 +216,9 @@ class DefenseSubmission(Base):
     )
     problem_id: Mapped[int] = mapped_column(Integer, nullable=False)
     solved: Mapped[bool] = mapped_column(Boolean, default=False)
+    solved_after_end: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )  # 디펜스 종료 후 풀었을 때
     checked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )

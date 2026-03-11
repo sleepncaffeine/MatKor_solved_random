@@ -36,6 +36,7 @@ class DefenseProblemOut(BaseModel):
     url: str
     is_fixed: bool
     solved: bool = False
+    solved_after_end: bool = False  # 디펜스 종료 후 풀었을 때
 
 
 class DefenseAssignmentOut(BaseModel):

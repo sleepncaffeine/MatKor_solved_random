@@ -25,21 +25,30 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
-async def _get_submission_map(db: AsyncSession, assignment_id: int) -> dict[int, bool]:
-    """assignment의 제출 현황 {problem_id: solved} 반환."""
+async def _get_submission_map(db: AsyncSession, assignment_id: int) -> dict[int, dict]:
+    """assignment의 제출 현황 {problem_id: {solved, solved_after_end}} 반환."""
     result = await db.execute(
         select(DefenseSubmission).where(
             DefenseSubmission.assignment_id == assignment_id
         )
     )
-    return {s.problem_id: s.solved for s in result.scalars().all()}
+    return {
+        s.problem_id: {"solved": s.solved, "solved_after_end": s.solved_after_end}
+        for s in result.scalars().all()
+    }
 
 
 def _build_assignment_out(
     assignment: DefenseAssignment, submission_map: dict
 ) -> DefenseAssignmentOut:
     problems = [
-        DefenseProblemOut(**p, solved=submission_map.get(p["problem_id"], False))
+        DefenseProblemOut(
+            **p,
+            solved=submission_map.get(p["problem_id"], {}).get("solved", False),
+            solved_after_end=submission_map.get(p["problem_id"], {}).get(
+                "solved_after_end", False
+            ),
+        )
         for p in assignment.problems
     ]
     return DefenseAssignmentOut(
@@ -270,6 +279,10 @@ async def sync_submissions(
             except Exception:
                 pass
 
+    # 디펜스 종료 여부 확인
+    defense = await db.get(Defense, defense_id)
+    is_ended = defense is not None and utcnow() > defense.end_at
+
     # DB upsert
     now = datetime.now(timezone.utc)
     for pid in problem_ids:
@@ -281,8 +294,15 @@ async def sync_submissions(
         )
         sub = existing.scalar_one_or_none()
         is_solved = pid in solved_ids
+        # 이미 종료 전에 풀었던 기록이 있으면 solved_after_end는 False 유지
+        already_solved_before = sub and sub.solved and not sub.solved_after_end
+        after_end = is_solved and is_ended and not already_solved_before
         if sub:
             sub.solved = is_solved
+            if is_solved and not already_solved_before:
+                sub.solved_after_end = after_end
+            elif not is_solved:
+                sub.solved_after_end = False
             sub.checked_at = now
         else:
             db.add(
@@ -291,6 +311,7 @@ async def sync_submissions(
                     user_id=current_user.id,
                     problem_id=pid,
                     solved=is_solved,
+                    solved_after_end=after_end,
                     checked_at=now,
                 )
             )
