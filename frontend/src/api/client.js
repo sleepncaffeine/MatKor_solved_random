@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+
 const client = axios.create({
-  baseURL: "/api",
+  baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -24,7 +26,7 @@ client.interceptors.response.use(
 
       if (refresh) {
         try {
-          const { data } = await axios.post("/api/auth/refresh", {
+          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {
             refresh_token: refresh,
           });
           localStorage.setItem("access_token", data.access_token);
@@ -32,7 +34,6 @@ client.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.access_token}`;
           return client(original);
         } catch {
-          // refresh 실패 → 로그아웃
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           window.location.href = "/login";
