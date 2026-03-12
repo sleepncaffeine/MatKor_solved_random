@@ -95,3 +95,53 @@ async def get_my_stats(
 ):
     stats = await get_user_tag_stats(db, current_user.id)
     return stats
+
+
+@router.post("/me/refresh", response_model=HandleRegisterResponse)
+async def refresh_my_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """solved.ac에서 티어/레이팅/태그 통계를 다시 불러옵니다."""
+    if not current_user.boj_handle:
+        raise HTTPException(status_code=400, detail="BOJ handle not registered")
+
+    try:
+        user_info = await fetch_user_info(current_user.boj_handle)
+        tag_items = await fetch_user_tag_ratings(current_user.boj_handle)
+    except SolvedACError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    current_user.rating = user_info.get("rating", 0)
+    if not current_user.tier_override:
+        current_user.tier = user_info.get("tier", 0)
+
+    parsed = parse_tag_ratings(tag_items)
+    now = datetime.now(timezone.utc)
+
+    for stat in parsed:
+        result = await db.execute(
+            select(UserTagStat).where(
+                UserTagStat.user_id == current_user.id,
+                UserTagStat.tag_key == stat["tag_key"],
+            )
+        )
+        existing_stat = result.scalar_one_or_none()
+        if existing_stat:
+            existing_stat.solved_count = stat["solved_count"]
+            existing_stat.tag_rating = stat["tag_rating"]
+            existing_stat.tag_name_ko = stat["tag_name_ko"]
+            existing_stat.tag_name_en = stat["tag_name_en"]
+            existing_stat.updated_at = now
+        else:
+            db.add(UserTagStat(user_id=current_user.id, **stat))
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return HandleRegisterResponse(
+        boj_handle=current_user.boj_handle,
+        tier=current_user.tier,
+        rating=current_user.rating,
+        tag_stats_count=len(parsed),
+    )

@@ -5,7 +5,9 @@ import Register from './pages/Register'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Recommend from './pages/Recommend'
-import AdminUsers from './pages/AdminUsers'
+import AdminUsers from './pages/admin/AdminUsers'
+import Defense from './pages/Defense'
+import AdminDefense from './pages/admin/AdminDefense'
 
 export default function App() {
   return (
@@ -19,10 +21,12 @@ export default function App() {
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/recommend" element={<ProtectedRoute><Recommend /></ProtectedRoute>} />
+        <Route path="/defense" element={<ProtectedRoute><Defense /></ProtectedRoute>} />
 
         {/* Admin only */}
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/users/:id" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+        <Route path="/admin/defense" element={<AdminRoute><AdminDefense /></AdminRoute>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
