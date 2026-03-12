@@ -12,5 +12,12 @@ class Settings(BaseSettings):
 
     SOLVED_AC_BASE_URL: str = "https://solved.ac/api/v3"
 
+    @property
+    def async_database_url(self) -> str:
+        url = self.DATABASE_URL
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
 
 settings = Settings()
