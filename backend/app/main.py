@@ -9,7 +9,6 @@ from app.db.session import Base, engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # DB 테이블 자동 생성 (개발용 — 프로덕션에서는 Alembic 마이그레이션 사용)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -19,7 +18,10 @@ app = FastAPI(title="BOJ Recommend API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=[
+        "http://localhost:5173",
+        "https://mat-kor-solved-random.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
