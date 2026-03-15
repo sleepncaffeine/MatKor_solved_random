@@ -22,7 +22,7 @@ class DefenseOut(BaseModel):
     problem_count: int
     start_at: datetime
     end_at: datetime
-    fixed_problem_ids: list[str]
+    fixed_problem_ids: list[int]
     is_active: bool
     created_at: datetime
 
@@ -36,7 +36,7 @@ class DefenseProblemOut(BaseModel):
     url: str
     is_fixed: bool
     solved: bool = False
-    solved_after_end: bool = False  # 디펜스 종료 후 풀었을 때
+    solved_after_end: bool = False
 
 
 class DefenseAssignmentOut(BaseModel):
