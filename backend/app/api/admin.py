@@ -8,7 +8,6 @@ from app.schemas.user import (
     AdminOverrideTierRequest,
     AdminUpdateHandleRequest,
     AdminUpdateStatusRequest,
-    RecommendHistoryOut,
     TagStatOut,
     UserOut,
 )
@@ -21,7 +20,6 @@ from app.services.solved_ac import (
 from app.services.user import (
     get_all_users,
     get_user_by_id,
-    get_user_recommendation_history,
     get_user_tag_stats,
 )
 
@@ -60,16 +58,6 @@ async def get_user_stats(
 ):
     await _get_target_user(db, user_id)
     return await get_user_tag_stats(db, user_id)
-
-
-@router.get("/users/{user_id}/history", response_model=list[RecommendHistoryOut])
-async def get_user_history(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_admin),
-):
-    await _get_target_user(db, user_id)
-    return await get_user_recommendation_history(db, user_id)
 
 
 @router.put("/users/{user_id}/handle")

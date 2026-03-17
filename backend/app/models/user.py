@@ -74,9 +74,6 @@ class User(Base):
     solved_problems: Mapped[list["SolvedProblem"]] = relationship(
         "SolvedProblem", back_populates="user", cascade="all, delete-orphan"
     )
-    recommendation_history: Mapped[list["RecommendationHistory"]] = relationship(
-        "RecommendationHistory", back_populates="user", cascade="all, delete-orphan"
-    )
     defense_assignments: Mapped[list["DefenseAssignment"]] = relationship(
         "DefenseAssignment", back_populates="user", cascade="all, delete-orphan"
     )
@@ -121,24 +118,6 @@ class SolvedProblem(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="solved_problems")
-
-
-class RecommendationHistory(Base):
-    __tablename__ = "recommendation_history"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    problem_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    tags: Mapped[list] = mapped_column(JSON, nullable=False)  # ["dp", "graph"]
-    mode: Mapped[RecommendMode] = mapped_column(Enum(RecommendMode), nullable=False)
-    tag_logic: Mapped[TagLogic] = mapped_column(Enum(TagLogic), nullable=False)
-    recommended_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow
-    )
-
-    user: Mapped["User"] = relationship("User", back_populates="recommendation_history")
 
 
 class Defense(Base):

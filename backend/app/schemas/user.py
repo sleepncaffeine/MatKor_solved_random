@@ -56,14 +56,3 @@ class AdminOverrideTierRequest(BaseModel):
 
 class AdminUpdateStatusRequest(BaseModel):
     is_active: bool
-
-
-class RecommendHistoryOut(BaseModel):
-    id: int
-    problem_id: int
-    tags: list[str]
-    mode: str
-    tag_logic: TagLogic
-    recommended_at: datetime
-
-    model_config = {"from_attributes": True}

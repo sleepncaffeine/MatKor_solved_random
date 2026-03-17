@@ -29,7 +29,6 @@ const adminApi = {
   getUsers: () => client.get('/admin/users'),
   getUser: (id) => client.get(`/admin/users/${id}`),
   getUserStats: (id) => client.get(`/admin/users/${id}/stats`),
-  getUserHistory: (id) => client.get(`/admin/users/${id}/history`),
   updateHandle: (id, handle) => client.put(`/admin/users/${id}/handle`, { handle }),
   overrideTier: (id, tier) => client.put(`/admin/users/${id}/tier`, { tier }),
   updateStatus: (id, is_active) => client.patch(`/admin/users/${id}/status`, { is_active }),
@@ -89,14 +88,12 @@ function UserDetailModal({ user, onClose, onUpdated }) {
   const [handle, setHandle] = useState(user.boj_handle ?? '')
   const [tierInput, setTierInput] = useState(String(user.tier))
   const [stats, setStats] = useState([])
-  const [history, setHistory] = useState([])
   const [tab, setTab] = useState('info')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
 
   useEffect(() => {
     adminApi.getUserStats(user.id).then((r) => setStats(r.data)).catch(() => { })
-    adminApi.getUserHistory(user.id).then((r) => setHistory(r.data)).catch(() => { })
   }, [user.id])
 
   const flash = (text, type = 'ok') => {
@@ -139,7 +136,7 @@ function UserDetailModal({ user, onClose, onUpdated }) {
     } finally { setSaving(false) }
   }
 
-  const TABS = ['info', '태그 통계', '추천 이력']
+  const TABS = ['info', '태그 통계']
 
   return (
     <Modal title={`유저 상세 — ${user.email}`} onClose={onClose}>
@@ -283,43 +280,6 @@ function UserDetailModal({ user, onClose, onUpdated }) {
         </div>
       )}
 
-      {/* 추천 이력 탭 */}
-      {tab === '추천 이력' && (
-        <div className="space-y-2">
-          {history.length === 0 ? (
-            <p className="text-text-muted text-sm text-center py-8">추천 이력 없음</p>
-          ) : (
-            history.map((h) => (
-              <div key={h.id} className="bg-bg-raised border border-bg-border rounded-lg px-4 py-3 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <a
-                      href={`https://www.acmicpc.net/problem/${h.problem_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-accent-blue hover:underline text-sm"
-                    >
-                      #{h.problem_id}
-                    </a>
-                    <Badge color={h.mode === 'practice' ? 'green' : h.mode === 'challenge' ? 'amber' : 'blue'}>
-                      {h.mode}
-                    </Badge>
-                    <Badge>{h.tag_logic}</Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {h.tags.map((t) => (
-                      <span key={t} className="tag-badge">{t}</span>
-                    ))}
-                  </div>
-                </div>
-                <span className="text-text-muted text-xs font-mono shrink-0">
-                  {new Date(h.recommended_at).toLocaleDateString('ko-KR')}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </Modal>
   )
 }
