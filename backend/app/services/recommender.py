@@ -82,6 +82,11 @@ def build_query(
     return " ".join(parts)
 
 
+def _has_korean(item: dict) -> bool:
+    """titles 배열에 language='ko' 항목이 있는 문제만 허용."""
+    return any(t.get("language") == "ko" for t in item.get("titles", []))
+
+
 def parse_problem(item: dict) -> ProblemOut:
     problem_id = item["problemId"]
     tag_keys = [tag["key"] for tag in item.get("tags", [])]
@@ -125,7 +130,7 @@ async def recommend(
     except SolvedACError as e:
         raise ValueError(str(e)) from e
 
-    items = data.get("items", [])
+    items = [item for item in data.get("items", []) if _has_korean(item)]
     problems = [parse_problem(item) for item in items[:count]]
 
     return RecommendResponse(

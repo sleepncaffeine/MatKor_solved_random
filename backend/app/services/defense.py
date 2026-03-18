@@ -27,16 +27,21 @@ BAND_DELTA: dict[str, dict[str, tuple[int, int, int]]] = {
         "challenge": (-2, +2, 13),
     },
     "mid": {
-        "practice": (-8, 0, 20),
-        "train": (-5, +1, 20),
-        "challenge": (-3, +2, 20),
+        "practice": (-10, 0, 20),
+        "train": (-7, +1, 20),
+        "challenge": (-5, +2, 20),
     },
     "high": {
-        "practice": (-10, -1, 21),
-        "train": (-7, 0, 21),
-        "challenge": (-5, +1, 21),
+        "practice": (-12, -1, 21),
+        "train": (-9, 0, 21),
+        "challenge": (-7, +1, 21),
     },
 }
+
+
+def _has_korean(item: dict) -> bool:
+    """titles 배열에 language='ko' 항목이 있는 문제만 허용."""
+    return any(t.get("language") == "ko" for t in item.get("titles", []))
 
 
 async def fetch_candidate_problems(
@@ -52,14 +57,14 @@ async def fetch_candidate_problems(
     solved_part = f"solved_by_count:{min_solved}.."
     exclude = f"-@{handle}" if handle else ""
 
-    parts = [tier_part, tag_part, solved_part]
+    parts = [tier_part, tag_part, solved_part, "-tag:language"]
     if exclude:
         parts.append(exclude)
 
     query = " ".join(parts)
     try:
         data = await search_problems(query, page=page)
-        return data.get("items", [])
+        return [item for item in data.get("items", []) if _has_korean(item)]
     except SolvedACError:
         return []
 
