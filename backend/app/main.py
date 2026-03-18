@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, admin_defense, auth, defense, recommend, user
+from app.api.admin_signup_key import router as signup_key_router
 from app.db.session import Base, engine
 
 
@@ -33,6 +34,7 @@ app.include_router(recommend.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(admin_defense.router, prefix="/api")
 app.include_router(defense.router, prefix="/api")
+app.include_router(signup_key_router, prefix="/api")
 
 
 @app.get("/health")

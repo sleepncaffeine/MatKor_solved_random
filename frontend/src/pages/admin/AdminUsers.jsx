@@ -294,6 +294,8 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [signupKey, setSignupKey] = useState(null)
+  const [keyRefreshing, setKeyRefreshing] = useState(false)
 
   const fetchUsers = () => {
     setLoading(true)
@@ -302,7 +304,23 @@ export default function AdminUsers() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  const fetchSignupKey = () => {
+    client.get('/admin/signup-key')
+      .then((r) => setSignupKey(r.data))
+      .catch(() => { })
+  }
+
+  const handleKeyRefresh = async () => {
+    setKeyRefreshing(true)
+    try {
+      const { data } = await client.post('/admin/signup-key/refresh')
+      setSignupKey({ ...data, expires_in: '24h 0m' })
+    } finally {
+      setKeyRefreshing(false)
+    }
+  }
+
+  useEffect(() => { fetchUsers(); fetchSignupKey() }, [])
 
   const handleDelete = async () => {
     try {
@@ -347,6 +365,30 @@ export default function AdminUsers() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+
+        {/* 회원가입 키 */}
+        <div className="card flex items-center justify-between gap-6">
+          <div>
+            <p className="text-text-muted text-xs font-mono uppercase tracking-wider mb-1">회원가입 키</p>
+            {signupKey ? (
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-3xl font-semibold tracking-[0.3em] text-accent-blue">
+                  {signupKey.key}
+                </span>
+                <span className="text-text-muted text-xs font-mono">만료: {signupKey.expires_in}</span>
+              </div>
+            ) : (
+              <span className="text-text-muted text-sm font-mono">로딩 중...</span>
+            )}
+          </div>
+          <button
+            onClick={handleKeyRefresh}
+            disabled={keyRefreshing}
+            className="px-4 py-2 text-sm border border-bg-border text-text-muted hover:border-text-muted hover:text-text-secondary rounded-lg transition-all disabled:opacity-50 font-mono shrink-0"
+          >
+            {keyRefreshing ? '갱신 중...' : '키 갱신'}
+          </button>
         </div>
 
         {/* 테이블 */}

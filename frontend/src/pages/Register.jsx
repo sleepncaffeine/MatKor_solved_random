@@ -8,7 +8,7 @@ export default function Register() {
   const navigate = useNavigate()
   const loginStore = useAuthStore((s) => s.login)
 
-  const [form, setForm] = useState({ email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ email: '', password: '', confirm: '', signup_key: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -24,10 +24,14 @@ export default function Register() {
       setError('비밀번호는 8자 이상이어야 합니다.')
       return
     }
+    if (form.signup_key.length !== 4) {
+      setError('회원가입 키는 4자리 숫자입니다.')
+      return
+    }
 
     setLoading(true)
     try {
-      const { data: tokens } = await register(form.email, form.password)
+      const { data: tokens } = await register(form.email, form.password, form.signup_key)
       localStorage.setItem('access_token', tokens.access_token)
       localStorage.setItem('refresh_token', tokens.refresh_token)
       const { data: user } = await getMe()
@@ -78,6 +82,20 @@ export default function Register() {
               <label className="block text-text-secondary text-xs font-mono mb-1.5 uppercase tracking-wider">Confirm Password</label>
               <input type="password" className="input-base" placeholder="비밀번호 재입력"
                 value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} required />
+            </div>
+            <div>
+              <label className="block text-text-secondary text-xs font-mono mb-1.5 uppercase tracking-wider">회원가입 키</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                className="input-base tracking-[0.5em] text-center font-mono"
+                placeholder="0000"
+                value={form.signup_key}
+                onChange={(e) => setForm({ ...form, signup_key: e.target.value.replace(/\D/g, '') })}
+                required
+              />
+              <p className="text-text-muted text-xs mt-1">관리자에게 문의하여 키를 받으세요.</p>
             </div>
 
             {error && (
