@@ -2,10 +2,41 @@ import random
 
 from app.models.user import RecommendMode
 from app.services.solved_ac import SolvedACError, search_problems
-from app.services.recommender import rating_to_tier, MODE_DELTA, TIER_MIN, TIER_MAX
+from app.services.recommender import rating_to_tier, TIER_MIN, TIER_MAX
 
-# 연습/도전 모드에서 본인 tier 문제 최소 1개 보장을 위한 훈련 delta
-TRAIN_DELTA = (-1, 1)
+# ── 구간 분류 ──────────────────────────────────────────────
+# 하: B5~S1  (tier 1~10)
+# 중: G5~P3  (tier 11~18)
+# 상: P2~    (tier 19~30)
+
+
+def _user_band(tier: int) -> str:
+    if tier <= 10:
+        return "low"
+    elif tier <= 18:
+        return "mid"
+    else:
+        return "high"
+
+
+# (lo_delta, hi_delta, hard_cap)
+BAND_DELTA: dict[str, dict[str, tuple[int, int, int]]] = {
+    "low": {
+        "practice": (-6, 0, 13),
+        "train": (-4, +1, 13),
+        "challenge": (-2, +2, 13),
+    },
+    "mid": {
+        "practice": (-8, 0, 20),
+        "train": (-5, +1, 20),
+        "challenge": (-3, +2, 20),
+    },
+    "high": {
+        "practice": (-10, -1, 21),
+        "train": (-7, 0, 21),
+        "challenge": (-5, +1, 21),
+    },
+}
 
 
 async def fetch_candidate_problems(
@@ -13,10 +44,9 @@ async def fetch_candidate_problems(
     tier_lo: int,
     tier_hi: int,
     handle: str | None,
-    min_solved: int = 500,
+    min_solved: int = 100,
     page: int = 1,
 ) -> list[dict]:
-    """solved.ac search로 후보 문제 목록 가져오기."""
     tag_part = " ".join(f"tag:{t}" for t in tags)
     tier_part = f"tier:{tier_lo}..{tier_hi}"
     solved_part = f"solved_by_count:{min_solved}.."
@@ -27,12 +57,45 @@ async def fetch_candidate_problems(
         parts.append(exclude)
 
     query = " ".join(parts)
-
     try:
         data = await search_problems(query, page=page)
         return data.get("items", [])
     except SolvedACError:
         return []
+
+
+def _spectrum_pick(candidates: list[dict], count: int) -> list[dict]:
+    """
+    티어 오름차순 정렬 후 스펙트럼형 가중 샘플링.
+    낮은 티어일수록 가중치 높음: weight = (n - rank)  where rank=0 is lowest tier.
+    """
+    if not candidates or count <= 0:
+        return []
+
+    sorted_c = sorted(candidates, key=lambda x: x.get("level", 0))
+    n = len(sorted_c)
+    # rank 0 = 가장 낮은 티어 → 가중치 n, rank n-1 = 가장 높은 티어 → 가중치 1
+    weights = [n - i for i in range(n)]
+
+    picked = []
+    pool = list(range(n))
+    pool_weights = list(weights)
+
+    for _ in range(min(count, n)):
+        total = sum(pool_weights)
+        r = random.uniform(0, total)
+        cumul = 0
+        chosen_idx = 0
+        for j, w in enumerate(pool_weights):
+            cumul += w
+            if r <= cumul:
+                chosen_idx = j
+                break
+        picked.append(sorted_c[pool[chosen_idx]])
+        pool.pop(chosen_idx)
+        pool_weights.pop(chosen_idx)
+
+    return picked
 
 
 async def build_defense_problems(
@@ -44,87 +107,54 @@ async def build_defense_problems(
     handle: str | None,
     fixed_problem_ids: list[int],
 ) -> list[dict]:
-    """
-    사용자별 디펜스 문제 목록 생성.
-    - fixed_problem_ids: 무조건 포함
-    - 나머지는 tag_rating 기반 tier에서 랜덤 샘플링
-    - 연습/도전이더라도 본인 tier(train delta) 문제 최소 1개 보장
-    """
     # 태그 rating 평균으로 effective tier 계산
     ratings = [tag_ratings[t] for t in tags if t in tag_ratings]
     if ratings:
+        from app.services.recommender import rating_to_tier
+
         avg_rating = sum(ratings) // len(ratings)
         effective_tier = rating_to_tier(avg_rating)
     else:
         effective_tier = user_tier
 
-    lo, hi = MODE_DELTA[defense_mode]
+    band = _user_band(effective_tier)
+    mode_key = (
+        defense_mode.value if hasattr(defense_mode, "value") else str(defense_mode)
+    )
+    lo, hi, hard_cap = BAND_DELTA[band][mode_key]
+
     tier_lo = max(TIER_MIN, effective_tier + lo)
-    tier_hi = min(TIER_MAX, effective_tier + hi)
+    tier_hi = min(hard_cap, effective_tier + hi)
 
-    # 본인 tier (train) 범위
-    train_lo = max(TIER_MIN, effective_tier + TRAIN_DELTA[0])
-    train_hi = min(TIER_MAX, effective_tier + TRAIN_DELTA[1])
+    # tier_lo > tier_hi 방지 (하방이 하드캡보다 높아지는 극단 케이스)
+    if tier_lo > tier_hi:
+        tier_lo = max(TIER_MIN, tier_hi - 2)
 
-    need_anchor = defense_mode != RecommendMode.TRAIN  # 연습/도전만 anchor 필요
+    fixed_ids = set(fixed_problem_ids)
+    remaining_count = problem_count - len(fixed_ids)
 
-    # 후보 문제 fetch (최대 2페이지)
-    candidates = []
-    for page in range(1, 3):
+    # 후보 문제 fetch (최대 3페이지)
+    candidates: list[dict] = []
+    for page in range(1, 4):
         items = await fetch_candidate_problems(
             tags, tier_lo, tier_hi, handle, page=page
         )
         candidates.extend(items)
-        if len(candidates) >= problem_count * 5:
+        if len(candidates) >= remaining_count * 6:
             break
 
-    # anchor 후보 (본인 tier 범위)
-    anchor_candidates = []
-    if need_anchor:
-        for page in range(1, 2):
-            items = await fetch_candidate_problems(
-                tags, train_lo, train_hi, handle, page=page
-            )
-            anchor_candidates.extend(items)
+    # fixed 제외
+    pool = [c for c in candidates if c["problemId"] not in fixed_ids]
 
-    # fixed 문제 ID set
-    fixed_ids = set(fixed_problem_ids)
-    candidate_ids = {item["problemId"] for item in candidates}
-    anchor_ids = {item["problemId"] for item in anchor_candidates} - fixed_ids
+    # 스펙트럼형 가중 샘플링
+    picked = _spectrum_pick(pool, remaining_count)
 
-    # 이미 fixed에 본인 tier 포함 여부
-    fixed_in_anchor = any(
-        train_lo <= item.get("level", 0) <= train_hi
-        for item in candidates
-        if item["problemId"] in fixed_ids
-    )
-
-    result_ids: list[int] = list(fixed_ids)
-    remaining = problem_count - len(result_ids)
-
-    # anchor 1개 보장 (연습/도전 모드이고 fixed에 없는 경우)
-    anchor_picked = None
-    if need_anchor and not fixed_in_anchor and anchor_ids:
-        anchor_pool = [
-            i
-            for i in anchor_candidates
-            if i["problemId"] in anchor_ids and i["problemId"] not in fixed_ids
-        ]
-        if anchor_pool:
-            anchor_picked = random.choice(anchor_pool)
-            result_ids.append(anchor_picked["problemId"])
-            remaining -= 1
-
-    # 나머지 랜덤 샘플링
-    pool = [item for item in candidates if item["problemId"] not in set(result_ids)]
-    random.shuffle(pool)
-    picked = pool[:remaining]
-    result_ids.extend(item["problemId"] for item in picked)
-
-    # 문제 메타 조합
-    id_to_item = {item["problemId"]: item for item in candidates + anchor_candidates}
+    # fixed 문제 메타 수집 (후보에 없을 수 있으므로 별도)
+    id_to_item = {item["problemId"]: item for item in candidates}
 
     problems = []
+
+    # fixed 먼저
     for pid in fixed_ids:
         meta = id_to_item.get(pid, {})
         problems.append(
@@ -137,16 +167,16 @@ async def build_defense_problems(
             }
         )
 
-    for item in ([anchor_picked] if anchor_picked else []) + picked:
-        if item["problemId"] not in fixed_ids:
-            problems.append(
-                {
-                    "problem_id": item["problemId"],
-                    "title": item.get("titleKo", str(item["problemId"])),
-                    "level": item.get("level", 0),
-                    "url": f"https://www.acmicpc.net/problem/{item['problemId']}",
-                    "is_fixed": False,
-                }
-            )
+    # 스펙트럼 샘플
+    for item in picked:
+        problems.append(
+            {
+                "problem_id": item["problemId"],
+                "title": item.get("titleKo", str(item["problemId"])),
+                "level": item.get("level", 0),
+                "url": f"https://www.acmicpc.net/problem/{item['problemId']}",
+                "is_fixed": False,
+            }
+        )
 
     return problems[:problem_count]
