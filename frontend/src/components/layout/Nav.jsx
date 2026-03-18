@@ -28,7 +28,7 @@ export default function Nav() {
                 >
                     <span className="font-mono text-accent-blue font-semibold group-hover:text-blue-300 transition-colors">BOJ</span>
                     <span className="text-bg-border">/</span>
-                    <span className="font-mono text-text-secondary group-hover:text-text-primary transition-colors">rec</span>
+                    <span className="font-mono text-text-secondary group-hover:text-text-primary transition-colors">def</span>
                 </button>
 
                 <nav className="flex items-center gap-6">

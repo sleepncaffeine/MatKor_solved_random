@@ -59,9 +59,9 @@ export default function Register() {
           <div className="inline-flex items-center gap-2 mb-3">
             <span className="font-mono text-accent-blue text-2xl font-semibold">BOJ</span>
             <span className="text-bg-border text-2xl">/</span>
-            <span className="font-mono text-text-secondary text-2xl">rec</span>
+            <span className="font-mono text-text-secondary text-2xl">def</span>
           </div>
-          <p className="text-text-muted text-sm">알고리즘 문제 추천 시스템</p>
+          <p className="text-text-muted text-sm">Weekly BOJ</p>
         </div>
 
         <div className="card">

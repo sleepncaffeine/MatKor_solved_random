@@ -60,7 +60,7 @@ export default function Onboarding() {
           <div className="inline-flex items-center gap-2 mb-3">
             <span className="font-mono text-accent-blue text-2xl font-semibold">BOJ</span>
             <span className="text-bg-border text-2xl">/</span>
-            <span className="font-mono text-text-secondary text-2xl">rec</span>
+            <span className="font-mono text-text-secondary text-2xl">def</span>
           </div>
           <p className="text-text-muted text-sm">BOJ 핸들을 연결하세요</p>
         </div>
