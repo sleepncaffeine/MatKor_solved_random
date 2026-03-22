@@ -13,7 +13,7 @@ from app.services.recommender import rating_to_tier, TIER_MIN, TIER_MAX
 def _user_band(tier: int) -> str:
     if tier <= 10:
         return "low"
-    elif tier <= 18:
+    elif tier <= 16:
         return "mid"
     else:
         return "high"
@@ -22,19 +22,19 @@ def _user_band(tier: int) -> str:
 # (lo_delta, hi_delta, hard_cap)
 BAND_DELTA: dict[str, dict[str, tuple[int, int, int]]] = {
     "low": {
-        "practice": (-6, 0, 13),
-        "train": (-4, +1, 13),
-        "challenge": (-2, +2, 13),
+        "practice": (-6, 0, 12),
+        "train": (-4, +1, 12),
+        "challenge": (-2, +2, 12),
     },
     "mid": {
-        "practice": (-10, 0, 20),
-        "train": (-7, +1, 20),
-        "challenge": (-5, +2, 20),
+        "practice": (-10, 0, 16),
+        "train": (-7, +1, 16),
+        "challenge": (-5, +2, 16),
     },
     "high": {
-        "practice": (-12, -1, 21),
-        "train": (-9, 0, 21),
-        "challenge": (-7, +1, 21),
+        "practice": (-12, -1, 20),
+        "train": (-9, 0, 20),
+        "challenge": (-7, +1, 20),
     },
 }
 
