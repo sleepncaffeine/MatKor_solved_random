@@ -361,6 +361,12 @@ export default function AdminDefense() {
                                         className="px-3 py-1.5 text-xs border border-bg-border text-text-secondary hover:border-text-muted hover:text-text-primary rounded transition-colors font-mono">
                                         참가자
                                     </button>
+                                    {new Date(d.end_at) < now && (
+                                        <button onClick={() => navigate(`/admin/defense/${d.id}/scoreboard`)}
+                                            className="px-3 py-1.5 text-xs border border-accent-blue/40 text-accent-blue hover:bg-accent-blue/10 rounded transition-colors font-mono">
+                                            recap
+                                        </button>
+                                    )}
                                     {isLive(d) && (
                                         <button onClick={() => handleEarlyEnd(d.id, d.title)}
                                             className="px-3 py-1.5 text-xs border border-red-900/40 text-accent-red hover:bg-red-950/20 rounded transition-colors font-mono">
