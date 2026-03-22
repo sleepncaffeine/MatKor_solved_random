@@ -208,3 +208,15 @@ class DefenseSubmission(Base):
     assignment: Mapped["DefenseAssignment"] = relationship(
         "DefenseAssignment", back_populates="submissions"
     )
+
+
+class SignupKey(Base):
+    """회원가입 키 — 항상 레코드 1개만 유지, 24h마다 자동 갱신"""
+
+    __tablename__ = "signup_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(4), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
