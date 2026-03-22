@@ -352,6 +352,12 @@ export default function AdminDefense() {
                                         className="px-3 py-1.5 text-xs border border-bg-border text-text-secondary hover:border-text-muted hover:text-text-primary rounded transition-colors font-mono">
                                         참가자
                                     </button>
+                                    {new Date(d.end_at) < now && (
+                                        <button onClick={() => navigate(`/admin/defense/${d.id}/scoreboard`)}
+                                            className="px-3 py-1.5 text-xs border border-accent-blue/40 text-accent-blue hover:bg-accent-blue/10 rounded transition-colors font-mono">
+                                            recap
+                                        </button>
+                                    )}
                                     <button onClick={() => handleToggle(d.id)}
                                         className={`px-3 py-1.5 text-xs border rounded transition-colors font-mono ${d.is_active ? 'border-accent-amber/50 text-accent-amber hover:bg-amber-950/20' : 'border-accent-green/50 text-accent-green hover:bg-green-950/20'}`}>
                                         {d.is_active ? '비활성화' : '활성화'}

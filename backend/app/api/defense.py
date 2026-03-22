@@ -33,7 +33,11 @@ async def _get_submission_map(db: AsyncSession, assignment_id: int) -> dict[int,
         )
     )
     return {
-        s.problem_id: {"solved": s.solved, "solved_after_end": s.solved_after_end}
+        s.problem_id: {
+            "solved": s.solved,
+            "solved_after_end": s.solved_after_end,
+            "first_solved_at": s.first_solved_at,
+        }
         for s in result.scalars().all()
     }
 
@@ -298,11 +302,14 @@ async def sync_submissions(
         already_solved_before = sub and sub.solved and not sub.solved_after_end
         after_end = is_solved and is_ended and not already_solved_before
         if sub:
+            newly_solved = is_solved and not sub.solved
             sub.solved = is_solved
             if is_solved and not already_solved_before:
                 sub.solved_after_end = after_end
             elif not is_solved:
                 sub.solved_after_end = False
+            if newly_solved and sub.first_solved_at is None:
+                sub.first_solved_at = now
             sub.checked_at = now
         else:
             db.add(
@@ -312,6 +319,7 @@ async def sync_submissions(
                     problem_id=pid,
                     solved=is_solved,
                     solved_after_end=after_end,
+                    first_solved_at=now if is_solved else None,
                     checked_at=now,
                 )
             )

@@ -110,3 +110,84 @@ async def get_participants(
             }
         )
     return out
+
+
+@router.get("/{defense_id}/scoreboard")
+async def get_scoreboard(
+    defense_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    """디펜스 scoreboard — first_solved_at 기준 이벤트 목록 + 참가자별 진행도."""
+    defense = await db.get(Defense, defense_id)
+    if not defense:
+        raise HTTPException(status_code=404, detail="Defense not found")
+
+    result = await db.execute(
+        select(DefenseAssignment)
+        .options(
+            selectinload(DefenseAssignment.user),
+            selectinload(DefenseAssignment.submissions),
+        )
+        .where(DefenseAssignment.defense_id == defense_id)
+    )
+    assignments = result.scalars().all()
+
+    # 참가자 기본 정보
+    participants = []
+    for a in assignments:
+        sub_map = {s.problem_id: s for s in a.submissions}
+        solved_problems = [
+            {
+                "problem_id": p["problem_id"],
+                "title": p["title"],
+                "level": p["level"],
+                "first_solved_at": (lambda fsa: fsa.isoformat() if fsa else None)(
+                    sub_map[p["problem_id"]].first_solved_at
+                    if p["problem_id"] in sub_map
+                    else None
+                ),
+                "solved_after_end": (
+                    sub_map[p["problem_id"]].solved_after_end
+                    if p["problem_id"] in sub_map
+                    else False
+                ),
+            }
+            for p in a.problems
+        ]
+        participants.append(
+            {
+                "user_id": a.user_id,
+                "boj_handle": a.user.boj_handle or a.user.email,
+                "total": len(a.problems),
+                "problems": solved_problems,
+            }
+        )
+
+    # 시간순 이벤트 목록 (first_solved_at 있는 것만)
+    events = []
+    for p in participants:
+        for prob in p["problems"]:
+            if prob["first_solved_at"]:
+                events.append(
+                    {
+                        "boj_handle": p["boj_handle"],
+                        "user_id": p["user_id"],
+                        "problem_id": prob["problem_id"],
+                        "title": prob["title"],
+                        "level": prob["level"],
+                        "solved_at": prob["first_solved_at"],
+                        "solved_after_end": prob["solved_after_end"],
+                    }
+                )
+
+    events.sort(key=lambda e: e["solved_at"])
+
+    return {
+        "defense_id": defense_id,
+        "title": defense.title,
+        "start_at": defense.start_at.isoformat(),
+        "end_at": defense.end_at.isoformat(),
+        "participants": participants,
+        "events": events,
+    }

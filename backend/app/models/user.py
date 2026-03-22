@@ -198,22 +198,13 @@ class DefenseSubmission(Base):
     solved_after_end: Mapped[bool] = mapped_column(
         Boolean, default=False
     )  # 디펜스 종료 후 풀었을 때
+    first_solved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )  # False→True 전환 시각 (근사값)
     checked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
 
     assignment: Mapped["DefenseAssignment"] = relationship(
         "DefenseAssignment", back_populates="submissions"
-    )
-
-
-class SignupKey(Base):
-    """회원가입 키 — 항상 레코드 1개만 유지, 24h마다 자동 갱신"""
-
-    __tablename__ = "signup_keys"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    key: Mapped[str] = mapped_column(String(4), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow
     )

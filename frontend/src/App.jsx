@@ -8,6 +8,7 @@ import Recommend from './pages/Recommend'
 import AdminUsers from './pages/admin/AdminUsers'
 import Defense from './pages/Defense'
 import AdminDefense from './pages/admin/AdminDefense'
+import Scoreboard from './pages/admin/Scoreboard'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/users/:id" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         <Route path="/admin/defense" element={<AdminRoute><AdminDefense /></AdminRoute>} />
+        <Route path="/admin/defense/:defenseId/scoreboard" element={<AdminRoute><Scoreboard /></AdminRoute>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
