@@ -6,6 +6,7 @@ import {
     adminListDefenses, adminCreateDefense,
     adminToggleDefense, adminDeleteDefense,
     adminGetParticipants,
+    adminEndDefenseEarly,
 } from '../../api/defense'
 
 const TAG_PRESETS = ['dp', 'graphs', 'greedy', 'math', 'sorting', 'bfs', 'dfs', 'tree', 'string', 'binary_search']
@@ -289,6 +290,14 @@ export default function AdminDefense() {
         await fetchDefenses()
     }
 
+    const handleEarlyEnd = async (id, title) => {
+        if (!window.confirm(`"${title}" 을 지금 즉시 종료합니까?`)) return
+        try {
+            await adminEndDefenseEarly(id)
+            await fetchDefenses()
+        } catch { setError('조기 종료 실패') }
+    }
+
     const handleDelete = async (id, title) => {
         if (!window.confirm(`"${title}" 을 삭제하시겠습니까?`)) return
         try {
@@ -352,10 +361,10 @@ export default function AdminDefense() {
                                         className="px-3 py-1.5 text-xs border border-bg-border text-text-secondary hover:border-text-muted hover:text-text-primary rounded transition-colors font-mono">
                                         참가자
                                     </button>
-                                    {new Date(d.end_at) < now && (
-                                        <button onClick={() => navigate(`/admin/defense/${d.id}/scoreboard`)}
-                                            className="px-3 py-1.5 text-xs border border-accent-blue/40 text-accent-blue hover:bg-accent-blue/10 rounded transition-colors font-mono">
-                                            recap
+                                    {isLive(d) && (
+                                        <button onClick={() => handleEarlyEnd(d.id, d.title)}
+                                            className="px-3 py-1.5 text-xs border border-red-900/40 text-accent-red hover:bg-red-950/20 rounded transition-colors font-mono">
+                                            조기 종료
                                         </button>
                                     )}
                                     <button onClick={() => handleToggle(d.id)}

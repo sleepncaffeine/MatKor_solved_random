@@ -16,3 +16,6 @@ export const adminToggleDefense = (id) =>
 export const adminDeleteDefense = (id) => client.delete(`/admin/defense/${id}`);
 export const adminGetParticipants = (id) =>
   client.get(`/admin/defense/${id}/participants`);
+
+export const adminEndDefenseEarly = (id) =>
+  client.patch(`/admin/defense/${id}/end`);

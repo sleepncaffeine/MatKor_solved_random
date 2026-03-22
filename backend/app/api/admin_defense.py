@@ -112,6 +112,26 @@ async def get_participants(
     return out
 
 
+@router.patch("/{defense_id}/end")
+async def end_defense_early(
+    defense_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    """디펜스 조기 종료 — end_at을 현재 시각으로 설정."""
+    from datetime import datetime, timezone
+
+    defense = await db.get(Defense, defense_id)
+    if not defense:
+        raise HTTPException(status_code=404, detail="Defense not found")
+    now = datetime.now(timezone.utc)
+    if defense.end_at <= now:
+        raise HTTPException(status_code=400, detail="Defense already ended")
+    defense.end_at = now
+    await db.commit()
+    return {"id": defense.id, "end_at": defense.end_at.isoformat()}
+
+
 @router.get("/{defense_id}/scoreboard")
 async def get_scoreboard(
     defense_id: int,
@@ -133,7 +153,6 @@ async def get_scoreboard(
     )
     assignments = result.scalars().all()
 
-    # 참가자 기본 정보
     participants = []
     for a in assignments:
         sub_map = {s.problem_id: s for s in a.submissions}
@@ -164,7 +183,6 @@ async def get_scoreboard(
             }
         )
 
-    # 시간순 이벤트 목록 (first_solved_at 있는 것만)
     events = []
     for p in participants:
         for prob in p["problems"]:
