@@ -65,7 +65,11 @@ async def fetch_candidate_problems(
     query = " ".join(parts)
     try:
         data = await search_problems(query, page=page)
-        return [item for item in data.get("items", []) if _has_korean(item)]
+        return [
+            item
+            for item in data.get("items", [])
+            if _has_korean(item) and item.get("level", 0) >= 1
+        ]
     except SolvedACError:
         return []
 
@@ -149,13 +153,17 @@ async def build_defense_problems(
         if len(candidates) >= remaining_count * 6:
             break
 
-    # fixed 제외
-    pool = [c for c in candidates if c["problemId"] not in fixed_ids]
+    # fixed 제외 + level 0 (번외) 제외
+    pool = [
+        c
+        for c in candidates
+        if c["problemId"] not in fixed_ids and c.get("level", 0) >= 1
+    ]
 
     # 스펙트럼형 가중 샘플링
     picked = _spectrum_pick(pool, remaining_count)
 
-    # fixed 문제 메타 수집
+    # fixed 문제 메타 수집 — solved.ac에서 직접 가져와 정확한 티어 보장
     id_to_item = {item["problemId"]: item for item in candidates}
 
     for pid in fixed_ids:
@@ -179,7 +187,7 @@ async def build_defense_problems(
             {
                 "problem_id": pid,
                 "title": meta.get("titleKo", str(pid)),
-                "level": meta.get("level", 0),  # solved.ac 실제 티어
+                "level": meta.get("level", 0),  # solved.ac 실제 티어 그대로
                 "url": f"https://www.acmicpc.net/problem/{pid}",
                 "is_fixed": True,
             }
