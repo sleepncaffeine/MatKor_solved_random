@@ -52,6 +52,7 @@ async def fetch_candidate_problems(
     min_solved: int = 100,
     page: int = 1,
 ) -> list[dict]:
+    tier_lo = max(1, tier_lo)  # tier 0 (번외) 제외
     tag_part = " ".join(f"tag:{t}" for t in tags)
     tier_part = f"tier:{tier_lo}..{tier_hi}"
     solved_part = f"solved_by_count:{min_solved}.."
@@ -154,8 +155,20 @@ async def build_defense_problems(
     # 스펙트럼형 가중 샘플링
     picked = _spectrum_pick(pool, remaining_count)
 
-    # fixed 문제 메타 수집 (후보에 없을 수 있으므로 별도)
+    # fixed 문제 메타 수집
     id_to_item = {item["problemId"]: item for item in candidates}
+
+    for pid in fixed_ids:
+        if pid not in id_to_item:
+            try:
+                from app.services.solved_ac import search_problems as _search
+
+                data = await _search(f"id:{pid}")
+                items = data.get("items", [])
+                if items:
+                    id_to_item[pid] = items[0]
+            except Exception:
+                pass
 
     problems = []
 
@@ -166,7 +179,7 @@ async def build_defense_problems(
             {
                 "problem_id": pid,
                 "title": meta.get("titleKo", str(pid)),
-                "level": meta.get("level", 0),
+                "level": meta.get("level", 0),  # solved.ac 실제 티어
                 "url": f"https://www.acmicpc.net/problem/{pid}",
                 "is_fixed": True,
             }

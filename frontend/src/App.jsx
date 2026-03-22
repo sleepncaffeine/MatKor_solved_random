@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute, AdminRoute } from './components/layout/ProtectedRoute'
 import Login from './pages/Login'
@@ -9,8 +10,26 @@ import AdminUsers from './pages/admin/AdminUsers'
 import Defense from './pages/Defense'
 import AdminDefense from './pages/admin/AdminDefense'
 import Scoreboard from './pages/admin/Scoreboard'
+import useAuthStore from './store/auth'
+import { getMe } from './api/user'
 
 export default function App() {
+  const { isAuthenticated, setUser } = useAuthStore()
+  const [booting, setBooting] = useState(true)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      getMe()
+        .then(r => setUser(r.data))
+        .catch(() => { })
+        .finally(() => setBooting(false))
+    } else {
+      setBooting(false)
+    }
+  }, [])
+
+  if (booting) return null
+
   return (
     <BrowserRouter>
       <Routes>
