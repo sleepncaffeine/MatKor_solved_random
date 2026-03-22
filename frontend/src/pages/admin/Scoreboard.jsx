@@ -315,21 +315,21 @@ export default function Scoreboard() {
                     />
                 </div>
 
-                {/* 이벤트 로그 */}
-                <div className="card space-y-2">
-                    <p className="text-text-muted text-xs font-mono uppercase tracking-wider">이벤트 로그</p>
-                    {events.length === 0
-                        ? <p className="text-text-muted text-sm text-center py-6">갱신된 풀이 데이터가 없습니다.</p>
-                        : <EventLog events={events} currentIdx={currentIdx} />
-                    }
-                </div>
-
                 {/* 리더보드 */}
                 <div className="card space-y-4">
                     <p className="text-text-muted text-xs font-mono uppercase tracking-wider mb-4">리더보드</p>
                     {ranking.length === 0
                         ? <p className="text-text-muted text-sm text-center py-6">참가자 없음</p>
                         : <RankingBoard ranking={ranking} />
+                    }
+                </div>
+
+                {/* 이벤트 로그 */}
+                <div className="card space-y-2">
+                    <p className="text-text-muted text-xs font-mono uppercase tracking-wider">이벤트 로그</p>
+                    {events.length === 0
+                        ? <p className="text-text-muted text-sm text-center py-6">갱신된 풀이 데이터가 없습니다.</p>
+                        : <EventLog events={events} currentIdx={currentIdx} />
                     }
                 </div>
 
