@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../../components/layout/Nav'
 import client from '../../api/client'
@@ -25,9 +25,7 @@ const TIER_TABLE = [
     { label: 'R1', color: '#ff0062' },
 ]
 
-// 티어 점수 (리더보드 정렬용): 높을수록 좋음
-const tierScore = (level) => level ?? 0
-
+// 순위 기준: 풀이 수 많은 순, 동률이면 마지막 풀이 시각 빠른 순
 function computeRanking(participants, visibleEvents) {
     const solvedSet = new Set(visibleEvents.map(e => `${e.user_id}:${e.problem_id}`))
     return participants
@@ -35,15 +33,18 @@ function computeRanking(participants, visibleEvents) {
             const solved = p.problems.filter(pr =>
                 pr.first_solved_at && solvedSet.has(`${p.user_id}:${pr.problem_id}`)
             )
-            const score = solved.reduce((acc, pr) => acc + tierScore(pr.level), 0)
             const lastSolvedAt = solved.length > 0
                 ? solved.map(pr => pr.first_solved_at).sort().at(-1)
                 : null
-            return { ...p, solvedProblems: solved, score, lastSolvedAt }
+            return { ...p, solvedProblems: solved, lastSolvedAt }
         })
         .sort((a, b) => {
-            if (b.score !== a.score) return b.score - a.score
-            if (a.lastSolvedAt && b.lastSolvedAt) return a.lastSolvedAt.localeCompare(b.lastSolvedAt)
+            if (b.solvedProblems.length !== a.solvedProblems.length)
+                return b.solvedProblems.length - a.solvedProblems.length
+            if (a.lastSolvedAt && b.lastSolvedAt)
+                return a.lastSolvedAt.localeCompare(b.lastSolvedAt)
+            if (a.lastSolvedAt) return -1
+            if (b.lastSolvedAt) return 1
             return 0
         })
 }
@@ -73,42 +74,97 @@ function EventLog({ events, currentIdx }) {
     )
 }
 
+const ROW_H = 56 // px — 각 row의 높이 (gap 포함)
+
 function RankingBoard({ ranking }) {
+    // user_id → 이전 순위 인덱스 추적
+    const prevOrderRef = useRef({})
+    // user_id → translateY 값
+    const [offsets, setOffsets] = useState({})
+
+    useLayoutEffect(() => {
+        const prev = prevOrderRef.current
+        const newOffsets = {}
+
+        ranking.forEach((p, newIdx) => {
+            const oldIdx = prev[p.user_id]
+            if (oldIdx !== undefined && oldIdx !== newIdx) {
+                // 이전 위치에서 현재 위치로 이동하는 오프셋 (역방향으로 시작해서 0으로)
+                newOffsets[p.user_id] = (oldIdx - newIdx) * ROW_H
+            } else {
+                newOffsets[p.user_id] = 0
+            }
+        })
+
+        setOffsets(newOffsets)
+
+        // 다음 프레임에서 0으로 리셋 → CSS transition이 애니메이션 실행
+        const frame = requestAnimationFrame(() => {
+            const zeroed = {}
+            ranking.forEach(p => { zeroed[p.user_id] = 0 })
+            setOffsets(zeroed)
+        })
+
+        // 현재 순서 저장
+        const newOrder = {}
+        ranking.forEach((p, idx) => { newOrder[p.user_id] = idx })
+        prevOrderRef.current = newOrder
+
+        return () => cancelAnimationFrame(frame)
+    }, [ranking])
+
     return (
-        <div className="space-y-2">
+        <div style={{ position: 'relative', minHeight: ranking.length * ROW_H }}>
             {ranking.map((p, idx) => {
                 const pct = p.total > 0 ? (p.solvedProblems.length / p.total) * 100 : 0
+                const offset = offsets[p.user_id] ?? 0
+
                 return (
-                    <div key={p.user_id} className="flex items-center gap-3">
-                        <span className="text-text-muted font-mono text-sm w-5 shrink-0 text-right">{idx + 1}</span>
-                        <span className="text-accent-blue font-mono text-sm w-28 truncate shrink-0">{p.boj_handle}</span>
-                        <div className="flex-1 relative h-6 bg-bg-raised rounded overflow-hidden">
-                            <div
-                                className="h-full rounded transition-all duration-700"
-                                style={{ width: `${pct}%`, backgroundColor: '#4f9cf9' }}
-                            />
-                            <div className="absolute inset-0 flex items-center px-2 gap-1">
-                                {p.solvedProblems.map(pr => {
-                                    const tier = TIER_TABLE[pr.level] ?? TIER_TABLE[0]
-                                    return (
-                                        <span
-                                            key={pr.problem_id}
-                                            title={`#${pr.problem_id} ${pr.title}`}
-                                            className="text-xs font-mono font-bold"
-                                            style={{ color: tier.color }}
-                                        >
-                                            {tier.label}
-                                        </span>
-                                    )
-                                })}
+                    <div
+                        key={p.user_id}
+                        style={{
+                            position: 'absolute',
+                            top: idx * ROW_H,
+                            left: 0,
+                            right: 0,
+                            transform: `translateY(${offset}px)`,
+                            transition: offset !== 0 ? 'none' : 'transform 0.6s cubic-bezier(0.4,0,0.2,1)',
+                        }}
+                    >
+                        <div className="flex items-center gap-3 py-1">
+                            <span className="text-text-muted font-mono text-sm w-5 shrink-0 text-right">{idx + 1}</span>
+                            <span className="text-accent-blue font-mono text-sm w-28 truncate shrink-0">{p.boj_handle}</span>
+                            <div className="flex-1 relative h-7 bg-bg-raised rounded overflow-hidden">
+                                <div
+                                    className="h-full rounded"
+                                    style={{
+                                        width: `${pct}%`,
+                                        backgroundColor: '#4f9cf9',
+                                        transition: 'width 0.6s ease',
+                                    }}
+                                />
+                                <div className="absolute inset-0 flex items-center px-2 gap-1.5">
+                                    {p.solvedProblems
+                                        .sort((a, b) => (a.first_solved_at ?? '').localeCompare(b.first_solved_at ?? ''))
+                                        .map(pr => {
+                                            const tier = TIER_TABLE[pr.level] ?? TIER_TABLE[0]
+                                            return (
+                                                <span
+                                                    key={pr.problem_id}
+                                                    title={`#${pr.problem_id} ${pr.title}`}
+                                                    className="text-xs font-mono font-bold shrink-0"
+                                                    style={{ color: tier.color }}
+                                                >
+                                                    {tier.label}
+                                                </span>
+                                            )
+                                        })}
+                                </div>
                             </div>
+                            <span className="font-mono text-sm text-text-secondary shrink-0 w-12 text-right">
+                                {p.solvedProblems.length}/{p.total}
+                            </span>
                         </div>
-                        <span className="font-mono text-sm text-text-secondary shrink-0 w-12 text-right">
-                            {p.solvedProblems.length}/{p.total}
-                        </span>
-                        <span className="font-mono text-xs text-text-muted shrink-0 w-14 text-right">
-                            +{p.score}pt
-                        </span>
                     </div>
                 )
             })}
@@ -124,10 +180,9 @@ export default function Scoreboard() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
-    // 재생 상태
-    const [currentIdx, setCurrentIdx] = useState(-1)  // -1 = 재생 전
+    const [currentIdx, setCurrentIdx] = useState(-1)
     const [playing, setPlaying] = useState(false)
-    const [speed, setSpeed] = useState(1500)  // ms per event
+    const [speed, setSpeed] = useState(1500)
     const intervalRef = useRef(null)
 
     useEffect(() => {
@@ -137,7 +192,6 @@ export default function Scoreboard() {
             .finally(() => setLoading(false))
     }, [defenseId])
 
-    // 재생 인터벌
     useEffect(() => {
         if (playing && data) {
             intervalRef.current = setInterval(() => {
@@ -206,7 +260,6 @@ export default function Scoreboard() {
             <Nav />
 
             <main className="max-w-4xl mx-auto px-6 py-10 animate-fade-in space-y-6">
-                {/* 헤더 */}
                 <div>
                     <button onClick={() => navigate('/admin/defense')} className="text-text-muted text-xs font-mono hover:text-text-secondary mb-3 block">
                         ← 디펜스 관리로
@@ -250,7 +303,7 @@ export default function Scoreboard() {
                     </span>
                 </div>
 
-                {/* 진행 슬라이더 */}
+                {/* 슬라이더 */}
                 <div className="px-1">
                     <input
                         type="range"
@@ -273,16 +326,15 @@ export default function Scoreboard() {
 
                 {/* 리더보드 */}
                 <div className="card space-y-4">
-                    <p className="text-text-muted text-xs font-mono uppercase tracking-wider">리더보드</p>
+                    <p className="text-text-muted text-xs font-mono uppercase tracking-wider mb-4">리더보드</p>
                     {ranking.length === 0
                         ? <p className="text-text-muted text-sm text-center py-6">참가자 없음</p>
                         : <RankingBoard ranking={ranking} />
                     }
                 </div>
 
-                {/* 점수 기준 안내 */}
                 <p className="text-text-muted text-xs font-mono text-center">
-                    점수 = 풀이한 문제들의 티어 합산 (B1=5, S1=10, G1=15, P1=20, D1=25, R1=30) · 동점 시 마지막 풀이 시각 빠른 순
+                    순위 기준: 풀이 수 · 동률 시 마지막 풀이 시각 빠른 순
                 </p>
             </main>
         </div>
