@@ -143,15 +143,27 @@ async def build_defense_problems(
     fixed_ids = set(fixed_problem_ids)
     remaining_count = problem_count - len(fixed_ids)
 
-    # 후보 문제 fetch (최대 3페이지)
+    # 후보 문제 fetch — 부족하면 tier 범위를 위아래로 확장하며 재시도
     candidates: list[dict] = []
-    for page in range(1, 4):
-        items = await fetch_candidate_problems(
-            tags, tier_lo, tier_hi, handle, page=page
-        )
-        candidates.extend(items)
-        if len(candidates) >= remaining_count * 6:
+    current_lo, current_hi = tier_lo, tier_hi
+    for attempt in range(4):  # 최대 4회 확장 시도
+        for page in range(1, 4):
+            items = await fetch_candidate_problems(
+                tags, current_lo, current_hi, handle, page=page
+            )
+            candidates.extend(items)
+            if len(candidates) >= remaining_count * 6:
+                break
+        pool_check = [
+            c
+            for c in candidates
+            if c["problemId"] not in fixed_ids and c.get("level", 0) >= 1
+        ]
+        if len(pool_check) >= remaining_count:
             break
+        # 부족하면 범위 확장: 하방 -2, 상방 +2 (hard_cap 무시하고 확장)
+        current_lo = max(1, current_lo - 2)
+        current_hi = min(TIER_MAX, current_hi + 2)
 
     # fixed 제외 + level 0 (번외) 제외
     pool = [
