@@ -12,7 +12,7 @@ class SolvedACError(Exception):
 
 async def fetch_user_info(handle: str) -> dict:
     url = f"{BASE}/user/show"
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, http2=True) as client:
         resp = await client.get(url, params={"handle": handle}, headers=HEADERS)
 
     if resp.status_code == 404:
@@ -36,7 +36,7 @@ async def fetch_user_tag_ratings(handle: str) -> list[dict]:
     }
     """
     url = f"{BASE}/user/tag_ratings"
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, http2=True) as client:
         resp = await client.get(url, params={"handle": handle}, headers=HEADERS)
 
     if resp.status_code == 404:
@@ -55,7 +55,7 @@ async def search_problems(query: str, page: int = 1) -> dict:
     """
     url = f"{BASE}/search/problem"
     params = {"query": query, "page": page, "sort": "id", "direction": "asc"}
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, http2=True) as client:
         resp = await client.get(url, params=params, headers=HEADERS)
 
     if resp.status_code != 200:

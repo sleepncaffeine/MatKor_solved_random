@@ -267,7 +267,7 @@ async def sync_submissions(
     problem_ids = [p["problem_id"] for p in assignment.problems]
     solved_ids = set()
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=20.0, http2=True) as client:
         for pid in problem_ids:
             try:
                 query = f"id:{pid} solved_by:{current_user.boj_handle}"
