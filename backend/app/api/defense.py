@@ -274,7 +274,10 @@ async def sync_submissions(
                 resp = await client.get(
                     f"{settings.SOLVED_AC_BASE_URL}/search/problem",
                     params={"query": query, "page": 1},
-                    headers={"Accept": "application/json"},
+                    headers={
+                        "Accept": "application/json",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    },
                 )
                 if resp.status_code == 200:
                     data = resp.json()
